@@ -8,6 +8,11 @@ import { useProductDraft } from "@/hooks/useProductDraft";
 import { parseEstimatedPrice } from "@/utils/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { createProduct } from "@/lib/firebase-products";
+import {
+  compressImageToBase64,
+  isCompressedImageValid,
+  MAX_PRODUCT_PHOTOS,
+} from "@/utils/image";
 import { formatRupiah, parseRupiah } from "@/utils/price";
 
 type SellFormData = {
@@ -51,8 +56,7 @@ function SellFormContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageLoading, setImageLoading] = useState(false);
 
   useEffect(() => {
@@ -116,12 +120,12 @@ function SellFormContent() {
     }));
   };
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files ?? []);
     if (selectedFiles.length === 0) return;
 
-    if (imageFiles.length + selectedFiles.length > 5) {
-      setError("Maksimal 5 foto produk.");
+    if (imageUrls.length + selectedFiles.length > MAX_PRODUCT_PHOTOS) {
+      setError(`Maksimal ${MAX_PRODUCT_PHOTOS} foto produk untuk MVP ini.`);
       event.target.value = "";
       return;
     }
@@ -132,49 +136,40 @@ function SellFormContent() {
       return;
     }
 
-    if (selectedFiles.some((file) => file.size > 2 * 1024 * 1024)) {
-      setError("Ukuran setiap foto maksimal 2MB untuk MVP ini.");
-      event.target.value = "";
-      return;
-    }
-
     setImageLoading(true);
 
-    Promise.all(
-      selectedFiles.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          }),
-      ),
-    )
-      .then((previews) => {
-        setImageFiles((prev) => [...prev, ...selectedFiles]);
-        setImagePreviews((prev) => [...prev, ...previews]);
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: prev.imageUrl || previews[0] || "",
-        }));
-        setError(null);
-      })
-      .catch(() => setError("Gagal membaca foto. Coba pilih file lain."))
-      .finally(() => setImageLoading(false));
+    try {
+      const compressedImages = await Promise.all(
+        selectedFiles.map((file) => compressImageToBase64(file)),
+      );
 
-    event.target.value = "";
+      if (compressedImages.some((imageUrl) => !isCompressedImageValid(imageUrl))) {
+        setError("Ada foto yang masih lebih dari 500KB setelah dikompres.");
+        return;
+      }
+
+      setImageUrls((prev) => [...prev, ...compressedImages]);
+      setFormData((prev) => ({
+        ...prev,
+        imageUrl: prev.imageUrl || compressedImages[0] || "",
+      }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memproses foto. Coba pilih file lain.");
+    } finally {
+      setImageLoading(false);
+      event.target.value = "";
+    }
   };
 
   const handleRemoveImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
-    setImagePreviews((prev) => {
-      const nextPreviews = prev.filter((_, itemIndex) => itemIndex !== index);
+    setImageUrls((prev) => {
+      const nextImages = prev.filter((_, itemIndex) => itemIndex !== index);
       setFormData((current) => ({
         ...current,
-        imageUrl: nextPreviews[0] || "",
+        imageUrl: nextImages[0] || "",
       }));
-      return nextPreviews;
+      return nextImages;
     });
   };
 
@@ -203,7 +198,7 @@ function SellFormContent() {
       return;
     }
 
-    if (imageFiles.length === 0) {
+    if (imageUrls.length === 0) {
       setError("Upload minimal 1 foto produk.");
       setLoading(false);
       return;
@@ -246,7 +241,7 @@ function SellFormContent() {
         condition: formData.condition,
         conditionDetail:
           formData.condition === "minus" ? formData.conditionDetail.trim() : undefined,
-        imageFiles,
+        imageUrls,
         location: formData.location,
         seller: {
           uid: user.uid,
@@ -462,11 +457,11 @@ function SellFormContent() {
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">Foto Produk</label>
             <div className="grid gap-4">
-              {imagePreviews.length > 0 ? (
+              {imageUrls.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  {imagePreviews.map((preview, index) => (
+                  {imageUrls.map((preview, index) => (
                     <div
-                      key={preview}
+                      key={`${index}-${preview.length}`}
                       className="relative aspect-square overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -505,7 +500,7 @@ function SellFormContent() {
                       type="file"
                       accept="image/*"
                       multiple
-                      disabled={imageLoading}
+                      disabled={imageLoading || imageUrls.length >= MAX_PRODUCT_PHOTOS}
                       onChange={handleImageChange}
                       className="sr-only"
                     />
@@ -517,14 +512,14 @@ function SellFormContent() {
                       accept="image/*"
                       capture="environment"
                       multiple
-                      disabled={imageLoading}
+                      disabled={imageLoading || imageUrls.length >= MAX_PRODUCT_PHOTOS}
                       onChange={handleImageChange}
                       className="sr-only"
                     />
                   </label>
                 </div>
                 <p className="text-xs font-semibold leading-5 text-slate-500">
-                  Upload 1 sampai 5 foto. Foto pertama menjadi cover. Maksimal 2MB per foto.
+                  Upload 1 sampai 2 foto. Foto pertama menjadi cover. Maksimal 500KB per foto setelah kompres.
                 </p>
               </div>
             </div>
@@ -589,7 +584,7 @@ function SellFormContent() {
               disabled={loading || imageLoading}
               className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
             >
-              {loading ? "Sedang upload & menyimpan..." : "Jual Barang"}
+              {loading ? "Sedang menyimpan..." : "Jual Barang"}
             </button>
           </div>
         </form>

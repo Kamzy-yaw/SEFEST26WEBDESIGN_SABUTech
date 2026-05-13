@@ -11,7 +11,6 @@ import {
   where,
   type Timestamp,
 } from "firebase/firestore";
-import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseServices } from "@/lib/firebase";
 import { firebaseCollections } from "@/lib/firebase-collections";
 import type { Product, ProductCategory, ProductCondition, ProductSubcategory } from "@/lib/types";
@@ -32,7 +31,7 @@ export type CreateProductInput = {
   description: string;
   condition: ProductCondition;
   conditionDetail?: string;
-  imageFiles?: File[];
+  imageUrls: string[];
   location: string;
   category: ProductCategory;
   subcategory: ProductSubcategory;
@@ -122,14 +121,6 @@ export function subscribeToProducts(
   );
 }
 
-export async function uploadProductImage(file: File, sellerId: string) {
-  const { storage } = getFirebaseServices();
-  const extension = file.name.split(".").pop() || "jpg";
-  const storageRef = ref(storage, `products/${sellerId}/${crypto.randomUUID()}.${extension}`);
-  const snapshot = await uploadBytes(storageRef, file, { contentType: file.type });
-  return getDownloadURL(snapshot.ref);
-}
-
 export function subscribeToSellerProducts(
   sellerId: string,
   onProducts: (products: Product[]) => void,
@@ -156,16 +147,15 @@ export function subscribeToSellerProducts(
   );
 }
 
-export async function uploadProductImages(files: File[], sellerId: string) {
-  return Promise.all(files.map((file) => uploadProductImage(file, sellerId)));
-}
-
 export async function createProduct(input: CreateProductInput) {
   const { db } = getFirebaseServices();
-  const imageUrls = input.imageFiles?.length
-    ? await uploadProductImages(input.imageFiles, input.seller.uid)
-    : [];
+  const imageUrls = input.imageUrls.slice(0, 2);
   const coverImageUrl = imageUrls[0] ?? null;
+
+  if (imageUrls.length === 0) {
+    throw new Error("Upload minimal 1 foto produk.");
+  }
+
   const userRef = doc(db, firebaseCollections.users, input.seller.uid);
   const userSnapshot = await getDoc(userRef);
   const userProfile = userSnapshot.data() as Partial<UserProfile> | undefined;
@@ -222,7 +212,7 @@ export async function createProduct(input: CreateProductInput) {
 }
 
 export async function deleteProduct(productId: string, userId: string) {
-  const { db, storage } = getFirebaseServices();
+  const { db } = getFirebaseServices();
 
   // Get product to verify ownership
   const productRef = doc(db, firebaseCollections.products, productId);
@@ -237,22 +227,6 @@ export async function deleteProduct(productId: string, userId: string) {
   // Check if user is the product owner
   if (productData.sellerId !== userId) {
     throw new Error("Anda tidak memiliki izin untuk menghapus produk ini.");
-  }
-
-  // Delete uploaded product images from storage if they exist.
-  const imageUrls = new Set([
-    ...(productData.imageUrls ?? []),
-    ...(productData.imageUrl ? [productData.imageUrl] : []),
-  ]);
-
-  for (const imageUrl of imageUrls) {
-    try {
-      const imageRef = ref(storage, imageUrl);
-      await deleteObject(imageRef);
-    } catch (error) {
-      // Log but don't throw - image deletion failure shouldn't block product deletion
-      console.warn("Gagal menghapus gambar dari Storage:", error);
-    }
   }
 
   // Delete product from Firestore
