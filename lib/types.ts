@@ -44,3 +44,16 @@ export type Product = {
   ecoSaved: number;
   createdAt: string;
 };
+
+export type TransactionStatus = "interested" | "chat_started" | "completed" | "cancelled";
+
+export type Transaction = {
+  id: string;
+  productId: string;
+  productName: string;
+  buyerId: string;
+  sellerId: string;
+  status: TransactionStatus;
+  message?: string;
+  createdAt: string;
+};

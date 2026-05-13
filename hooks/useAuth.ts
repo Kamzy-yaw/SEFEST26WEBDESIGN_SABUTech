@@ -9,7 +9,7 @@ import {
   subscribeToUserProfile,
   upsertUserProfile,
   type UserProfile,
-} from "@/lib/auth";
+} from "@/lib/users";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
