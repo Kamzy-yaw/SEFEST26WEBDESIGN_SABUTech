@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserSectionProps = {
@@ -29,7 +30,12 @@ export function UserSection({ compact = false }: UserSectionProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2">
+      <Link
+        href="/dashboard"
+        aria-label="Buka dashboard seller"
+        title="Dashboard seller"
+        className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2 transition hover:border-emerald-300 hover:bg-white hover:shadow-sm"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={avatar} alt={name} className="h-9 w-9 rounded-xl object-cover" />
         {!compact ? (
@@ -40,7 +46,7 @@ export function UserSection({ compact = false }: UserSectionProps) {
             </p>
           </div>
         ) : null}
-      </div>
+      </Link>
       <button
         type="button"
         onClick={logout}
