@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
@@ -9,7 +10,7 @@ import {
   setDoc,
   type Timestamp,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { getFirebaseServices } from "@/lib/firebase";
 import { firebaseCollections } from "@/lib/firebase-collections";
 import type { Product, ProductCategory, ProductCondition, ProductSubcategory } from "@/lib/types";
@@ -136,8 +137,8 @@ export async function createProduct(input: CreateProductInput) {
       ? userProfile.contributionCount
       : 0;
   const nextContributionCount = currentContributionCount + 1;
-  const sellerPhone = userProfile?.phoneNumber ?? input.seller.phoneNumber ?? null;
-  const sellerVerified = userProfile?.isPhoneVerified ?? input.seller.isPhoneVerified;
+  const sellerPhone = userProfile?.whatsappNumber ?? input.seller.phoneNumber ?? null;
+  const sellerVerified = userProfile?.isWhatsappConnected ?? false;
 
   const productRef = doc(collection(db, firebaseCollections.products));
 
@@ -160,7 +161,7 @@ export async function createProduct(input: CreateProductInput) {
     sellerPhone,
     sellerVerified,
     sellerContributionCount: nextContributionCount,
-    sellerStatus: sellerVerified ? "Verified Seller" : "Eco Seller",
+    sellerStatus: sellerVerified ? "WhatsApp Connected" : "Eco Seller",
     ecoSaved: 1,
     createdAt: serverTimestamp(),
   });
@@ -172,11 +173,65 @@ export async function createProduct(input: CreateProductInput) {
       displayName: input.seller.name,
       name: input.seller.name,
       photoURL: input.seller.avatar ?? null,
-      phoneNumber: sellerPhone,
-      isPhoneVerified: sellerVerified,
+      whatsappNumber: sellerPhone,
+      isWhatsappConnected: sellerVerified,
       contributionCount: nextContributionCount,
       updatedAt: serverTimestamp(),
     },
     { merge: true },
   );
+}
+
+export async function deleteProduct(productId: string, userId: string) {
+  const { db, storage } = getFirebaseServices();
+
+  // Get product to verify ownership
+  const productRef = doc(db, firebaseCollections.products, productId);
+  const productSnapshot = await getDoc(productRef);
+
+  if (!productSnapshot.exists()) {
+    throw new Error("Produk tidak ditemukan.");
+  }
+
+  const productData = productSnapshot.data() as FirestoreProduct;
+
+  // Check if user is the product owner
+  if (productData.sellerId !== userId) {
+    throw new Error("Anda tidak memiliki izin untuk menghapus produk ini.");
+  }
+
+  // Delete image from storage if exists
+  if (productData.imageUrl) {
+    try {
+      // Parse the image URL to extract the storage path
+      const imageRef = ref(storage, productData.imageUrl);
+      await deleteObject(imageRef);
+    } catch (error) {
+      // Log but don't throw - image deletion failure shouldn't block product deletion
+      console.warn("Gagal menghapus gambar dari Storage:", error);
+    }
+  }
+
+  // Delete product from Firestore
+  await deleteDoc(productRef);
+
+  // Update user's contribution count (decrement by 1)
+  const userRef = doc(db, firebaseCollections.users, userId);
+  const userSnapshot = await getDoc(userRef);
+
+  if (userSnapshot.exists()) {
+    const userData = userSnapshot.data() as Partial<UserProfile> | undefined;
+    const currentContributionCount =
+      typeof userData?.contributionCount === "number" ? userData.contributionCount : 0;
+    const nextContributionCount = Math.max(0, currentContributionCount - 1);
+
+    await setDoc(
+      userRef,
+      {
+        contributionCount: nextContributionCount,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
 }

@@ -36,7 +36,7 @@ export function UserSection({ compact = false }: UserSectionProps) {
           <div>
             <p className="text-sm font-black text-slate-900">{name}</p>
             <p className="text-xs font-bold text-emerald-700">
-              {profile?.isPhoneVerified ? "Verified Seller" : "Belum verifikasi HP"}
+              {profile?.isWhatsappConnected ? "WhatsApp Terhubung" : "Belum hubungkan WhatsApp"}
             </p>
           </div>
         ) : null}

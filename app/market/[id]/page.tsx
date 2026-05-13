@@ -5,15 +5,21 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { Product } from "@/lib/types";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import { getProductById } from "@/lib/firebase-products";
+import { getProductById, deleteProduct } from "@/lib/firebase-products";
+import { useAuth } from "@/hooks/useAuth";
+import { DeleteProductDialog } from "../_components/delete-product-dialog";
 import { formatCondition, formatRelativeTime, formatRupiah } from "../_utils/format";
 
 export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const { user, loading: authLoading } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -49,6 +55,27 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [params.id]);
+
+  const handleDeleteProduct = async () => {
+    if (!user) {
+      setDeleteError("Anda harus login untuk menghapus produk");
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await deleteProduct(params.id, user.uid);
+      setIsDeleteDialogOpen(false);
+      // Redirect to marketplace after successful deletion
+      router.push("/market?deleted=true");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Gagal menghapus produk");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const whatsappUrl = useMemo(() => {
     if (!product) return "#";
@@ -175,11 +202,11 @@ export default function ProductDetailPage() {
                 <p className="truncate text-sm font-black text-slate-900">{product.sellerName}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-emerald-700">
-                    {product.sellerStatus || "Eco Seller"}
+                    {product.sellerStatus || "Penjual Eco"}
                   </span>
                   {product.sellerVerified ? (
                     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-700">
-                      Verified Seller
+                      WhatsApp Terhubung
                     </span>
                   ) : null}
                   <span className="text-xs font-bold text-emerald-700">
@@ -189,7 +216,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={`grid gap-3 ${user?.uid === product.sellerId ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               <a
                 href={whatsappUrl}
                 target="_blank"
@@ -216,7 +243,30 @@ export default function ProductDetailPage() {
               >
                 Chat Seller
               </a>
+              {user?.uid === product.sellerId && (
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={isDeleting || authLoading}
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hapus
+                </button>
+              )}
             </div>
+
+            {/* Delete confirmation dialog */}
+            <DeleteProductDialog
+              productName={product.name}
+              isOpen={isDeleteDialogOpen}
+              isLoading={isDeleting}
+              error={deleteError}
+              onCancel={() => {
+                setIsDeleteDialogOpen(false);
+                setDeleteError(null);
+              }}
+              onConfirm={handleDeleteProduct}
+            />
           </aside>
         </div>
       </div>
