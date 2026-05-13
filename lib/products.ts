@@ -13,7 +13,13 @@ import {
 } from "firebase/firestore";
 import { getFirebaseServices } from "@/lib/firebase";
 import { firebaseCollections } from "@/lib/firebase-collections";
-import type { Product, ProductCategory, ProductCondition, ProductSubcategory } from "@/lib/types";
+import type {
+  Product,
+  ProductCategory,
+  ProductCondition,
+  ProductStatus,
+  ProductSubcategory,
+} from "@/lib/types";
 import type { UserProfile } from "@/lib/users";
 
 export type AuthSeller = {
@@ -49,6 +55,7 @@ type FirestoreProduct = Omit<Product, "id" | "createdAt"> & {
   sellerAvatar?: string | null;
   sellerPhone?: string | null;
   sellerVerified?: boolean;
+  status?: ProductStatus | null;
   createdAt?: Timestamp;
 };
 
@@ -78,8 +85,9 @@ function toProduct(id: string, data: FirestoreProduct): Product {
     sellerPhone: data.sellerPhone ?? undefined,
     sellerVerified: data.sellerVerified ?? false,
     sellerContributionCount: data.sellerContributionCount ?? 1,
-    sellerStatus: data.sellerStatus ?? "Eco Seller",
+    sellerStatus: data.sellerStatus ?? "Penjual Eco",
     ecoSaved: data.ecoSaved ?? 1,
+    status: data.status ?? undefined,
     createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
   };
 }
@@ -110,9 +118,9 @@ export function subscribeToProducts(
     productsQuery,
     (snapshot) => {
       onProducts(
-        snapshot.docs.map((productDoc) =>
-          toProduct(productDoc.id, productDoc.data() as FirestoreProduct),
-        ),
+        snapshot.docs
+          .map((productDoc) => toProduct(productDoc.id, productDoc.data() as FirestoreProduct))
+          .filter((product) => !product.status || product.status === "active"),
       );
     },
     (error) => {
@@ -153,7 +161,7 @@ export async function createProduct(input: CreateProductInput) {
   const coverImageUrl = imageUrls[0] ?? null;
 
   if (imageUrls.length === 0) {
-    throw new Error("Upload minimal 1 foto produk.");
+    throw new Error("Unggah minimal 1 foto produk.");
   }
 
   const userRef = doc(db, firebaseCollections.users, input.seller.uid);
@@ -190,8 +198,9 @@ export async function createProduct(input: CreateProductInput) {
     sellerPhone,
     sellerVerified,
     sellerContributionCount: nextContributionCount,
-    sellerStatus: sellerVerified ? "WhatsApp Connected" : "Eco Seller",
+    sellerStatus: sellerVerified ? "WhatsApp Terhubung" : "Penjual Eco",
     ecoSaved: 1,
+    status: "active",
     createdAt: serverTimestamp(),
   });
 
@@ -246,4 +255,17 @@ export async function deleteProduct(productId: string, userId: string) {
       { merge: true },
     );
   }
+}
+
+export async function updateProductStatus(productId: string, status: ProductStatus) {
+  const { db } = getFirebaseServices();
+
+  await setDoc(
+    doc(db, firebaseCollections.products, productId),
+    {
+      status,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }

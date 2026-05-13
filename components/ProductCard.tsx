@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Product } from "@/lib/types";
 import { formatCondition, formatRelativeTime, formatRupiah } from "@/lib/format";
+import { SafeImage } from "@/components/SafeImage";
 
 type ProductCardProps = {
   product: Product;
@@ -28,10 +29,10 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.category}
         </div>
         <div className="absolute bottom-5 right-5 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-emerald-500 text-2xl font-black text-white shadow-lg shadow-emerald-800/20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SafeImage
             src={sellerAvatar}
-            alt={product.sellerName || "Seller Eco Market"}
+            fallbackSrc="/default-avatar.png"
+            alt=""
             className="h-full w-full object-cover"
           />
         </div>
@@ -52,9 +53,6 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
             <span>
               Oleh: <span className="font-black text-slate-800">{product.sellerName}</span>
-            </span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-700">
-              {product.sellerStatus || "Penjual Eco"}
             </span>
             {product.sellerVerified ? (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-700">
@@ -80,7 +78,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <span className="font-bold text-slate-800">{product.location}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span>Seller</span>
+            <span>Penjual</span>
             <span className="font-bold text-emerald-700">
               {product.sellerContributionCount} barang terselamatkan
             </span>

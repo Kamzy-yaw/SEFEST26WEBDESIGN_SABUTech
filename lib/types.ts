@@ -1,4 +1,5 @@
 export type ProductCondition = "like_new" | "good" | "minus";
+export type ProductStatus = "active" | "reserved" | "sold";
 
 export type ProductCategory = "Elektronik" | "Buku & Edukasi" | "Fashion" | "Perabot Rumah";
 
@@ -42,18 +43,28 @@ export type Product = {
   sellerContributionCount: number;
   sellerStatus?: string;
   ecoSaved: number;
+  status?: ProductStatus;
   createdAt: string;
 };
 
-export type TransactionStatus = "interested" | "chat_started" | "completed" | "cancelled";
+export type TransactionMethod = "cod" | "shipping";
+export type TransactionStatus = "interested" | "accepted" | "shipping" | "completed" | "cancelled";
 
 export type Transaction = {
   id: string;
   productId: string;
   productName: string;
-  buyerId: string;
+  productImage?: string | null;
+  productPrice: number;
   sellerId: string;
+  buyerId: string;
+  buyerName: string;
+  buyerAvatar?: string | null;
+  buyerWhatsapp?: string | null;
+  method: TransactionMethod;
   status: TransactionStatus;
-  message?: string;
+  trackingNumber?: string | null;
+  shippingNote?: string | null;
   createdAt: string;
+  updatedAt?: string;
 };

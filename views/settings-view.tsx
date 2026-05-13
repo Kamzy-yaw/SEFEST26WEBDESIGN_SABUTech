@@ -9,6 +9,7 @@ import {
   normalizeWhatsAppNumber,
   updateUserProfile,
 } from "@/logic/users.logic";
+import { SafeImage } from "@/components/SafeImage";
 
 export function SettingsView() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export function SettingsView() {
     setError(null);
 
     if (!nextName) {
-      setError("Nama seller wajib diisi.");
+      setError("Nama penjual wajib diisi.");
       return;
     }
 
@@ -65,9 +66,9 @@ export function SettingsView() {
         whatsappNumber: nextWhatsappNumber,
       });
       setWhatsappNumber(normalizeWhatsAppNumber(nextWhatsappNumber));
-      setSuccess("Profil seller berhasil diperbarui.");
+      setSuccess("Profil penjual berhasil diperbarui.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menyimpan profil seller.");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan profil penjual.");
     } finally {
       setSaving(false);
     }
@@ -85,7 +86,7 @@ export function SettingsView() {
   }
 
   const avatarUrl = profile?.photoURL || user?.photoURL || "/default-avatar.png";
-  const sellerName = profile?.name || user?.displayName || "Eco Seller";
+  const sellerName = profile?.name || user?.displayName || "Penjual Eco";
   const email = profile?.email || user?.email || "-";
   const isWhatsappConnected = Boolean(profile?.isWhatsappConnected && profile?.whatsappNumber);
 
@@ -109,14 +110,14 @@ export function SettingsView() {
 
         <section className="rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SafeImage
               src={avatarUrl}
-              alt={sellerName}
+              fallbackSrc="/default-avatar.png"
+              alt=""
               className="h-20 w-20 rounded-3xl border border-emerald-100 object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-emerald-700">Profile Seller</p>
+              <p className="text-sm font-bold text-emerald-700">Profil Penjual</p>
               <h1 className="truncate text-3xl font-black tracking-tight">{sellerName}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">{email}</p>
             </div>
@@ -127,7 +128,7 @@ export function SettingsView() {
                   : "bg-amber-50 text-amber-700"
               }`}
             >
-              {isWhatsappConnected ? "WhatsApp Connected" : "Belum Terhubung"}
+              {isWhatsappConnected ? "WhatsApp Terhubung" : "Belum Terhubung"}
             </span>
           </div>
 
@@ -146,7 +147,7 @@ export function SettingsView() {
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>
               <label htmlFor="seller-name" className="text-sm font-black text-slate-900">
-                Nama Seller
+                Nama Penjual
               </label>
               <input
                 id="seller-name"

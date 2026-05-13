@@ -1,36 +1,89 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { subscribeToSellerTransactions } from "@/lib/transactions";
+import {
+  acceptTransaction,
+  cancelTransaction,
+  completeTransaction,
+  markTransactionShipping,
+  subscribeToBuyerTransactions,
+  subscribeToSellerTransactions,
+} from "@/lib/transactions";
 import type { Transaction } from "@/lib/types";
 
-export function useTransactions(sellerId?: string) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useTransactions(userId?: string) {
+  const [sellerTransactions, setSellerTransactions] = useState<Transaction[]>([]);
+  const [buyerTransactions, setBuyerTransactions] = useState<Transaction[]>([]);
+  const [loadingSellerTransactions, setLoadingSellerTransactions] = useState(true);
+  const [loadingBuyerTransactions, setLoadingBuyerTransactions] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sellerId) return;
+    if (!userId) return;
 
-    const unsubscribe = subscribeToSellerTransactions(
-      sellerId,
+    const unsubscribeSeller = subscribeToSellerTransactions(
+      userId,
       (nextTransactions) => {
-        setTransactions(nextTransactions);
-        setError(null);
-        setLoading(false);
+        setSellerTransactions(nextTransactions);
+        setLoadingSellerTransactions(false);
       },
       (message) => {
         setError(message);
-        setLoading(false);
+        setLoadingSellerTransactions(false);
       },
     );
 
-    return unsubscribe;
-  }, [sellerId]);
+    const unsubscribeBuyer = subscribeToBuyerTransactions(
+      userId,
+      (nextTransactions) => {
+        setBuyerTransactions(nextTransactions);
+        setLoadingBuyerTransactions(false);
+      },
+      (message) => {
+        setError(message);
+        setLoadingBuyerTransactions(false);
+      },
+    );
+
+    return () => {
+      unsubscribeSeller();
+      unsubscribeBuyer();
+    };
+  }, [userId]);
+
+  const runAction = async (transactionId: string, action: () => Promise<void>) => {
+    setActionId(transactionId);
+    setError(null);
+
+    try {
+      await action();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memperbarui transaksi.");
+    } finally {
+      setActionId(null);
+    }
+  };
 
   return {
-    transactions,
-    loading,
+    sellerTransactions,
+    buyerTransactions,
+    loadingSellerTransactions,
+    loadingBuyerTransactions,
     error,
+    actionId,
+    accept: (transaction: Transaction) =>
+      runAction(transaction.id, () => acceptTransaction(transaction)),
+    cancel: (transaction: Transaction) =>
+      runAction(transaction.id, () => cancelTransaction(transaction)),
+    complete: (transaction: Transaction) =>
+      runAction(transaction.id, () => completeTransaction(transaction)),
+    markShipping: (
+      transaction: Transaction,
+      input: {
+        trackingNumber?: string;
+        shippingNote?: string;
+      },
+    ) => runAction(transaction.id, () => markTransactionShipping(transaction, input)),
   };
 }

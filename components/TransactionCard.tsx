@@ -19,8 +19,10 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
           {transaction.status}
         </span>
       </div>
-      {transaction.message ? (
-        <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{transaction.message}</p>
+      {transaction.shippingNote ? (
+        <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+          {transaction.shippingNote}
+        </p>
       ) : null}
     </article>
   );

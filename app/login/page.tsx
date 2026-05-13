@@ -36,7 +36,7 @@ function LoginPageContent() {
 
         <section className="rounded-3xl border border-emerald-100 bg-white p-8 shadow-sm shadow-emerald-950/5">
           <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Eco Market</p>
-          <h1 className="mt-3 text-4xl font-black text-slate-950">Login Seller</h1>
+          <h1 className="mt-3 text-4xl font-black text-slate-950">Login Penjual</h1>
           <p className="mt-2 text-slate-600">
             Masuk dengan Google untuk mulai menjual barang bekas dan berkontribusi pada ekonomi sirkular.
           </p>

@@ -23,7 +23,7 @@ export type UserProfile = {
 function normalizeProfile(user: User, existing?: Partial<UserProfile>): UserProfile {
   return {
     uid: user.uid,
-    name: existing?.name || user.displayName || "Eco Seller",
+    name: existing?.name || user.displayName || "Penjual Eco",
     email: existing?.email ?? user.email ?? null,
     photoURL: existing?.photoURL ?? user.photoURL ?? null,
     whatsappNumber: existing?.whatsappNumber ?? null,
@@ -109,7 +109,7 @@ export async function updateUserProfile(
   const normalizedWhatsapp = normalizeWhatsAppNumber(input.whatsappNumber);
 
   if (!name) {
-    throw new Error("Nama seller wajib diisi.");
+    throw new Error("Nama penjual wajib diisi.");
   }
 
   if (!isValidWhatsAppNumber(input.whatsappNumber)) {

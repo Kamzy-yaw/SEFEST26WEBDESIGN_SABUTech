@@ -9,6 +9,7 @@ import { useProductImageUpload, createProduct } from "@/logic/products.logic";
 import { parseEstimatedPrice } from "@/utils/storage";
 import { useAuth } from "@/logic/auth.logic";
 import { formatRupiah, parseRupiah } from "@/utils/price";
+import { SafeImage } from "@/components/SafeImage";
 
 type SellFormData = {
   name: string;
@@ -158,7 +159,7 @@ function SellFormContent() {
     }
 
     if (imageUrls.length === 0) {
-      setError("Upload minimal 1 foto produk.");
+      setError("Unggah minimal 1 foto produk.");
       setLoading(false);
       return;
     }
@@ -204,7 +205,7 @@ function SellFormContent() {
         location: formData.location,
         seller: {
           uid: user.uid,
-          name: profile.name || user.displayName || "Eco Seller",
+          name: profile.name || user.displayName || "Penjual Eco",
           avatar: profile.photoURL || user.photoURL || undefined,
           phoneNumber: profile.whatsappNumber,
           isPhoneVerified: profile.isWhatsappConnected,
@@ -278,7 +279,7 @@ function SellFormContent() {
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
             <div>
               <p className="text-sm font-black text-emerald-900">
-                {user ? profile?.name || user.displayName || "Eco Seller" : "Login seller"}
+                {user ? profile?.name || user.displayName || "Penjual Eco" : "Login penjual"}
               </p>
               <p className="text-xs font-semibold text-emerald-700">
                 {user && profile?.isWhatsappConnected
@@ -423,10 +424,10 @@ function SellFormContent() {
                       key={`${index}-${preview.length}`}
                       className="relative aspect-square overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <SafeImage
                         src={preview}
-                        alt={`Preview foto produk ${index + 1}`}
+                        fallbackSrc="/placeholder-product.svg"
+                        alt=""
                         className="h-full w-full object-cover"
                       />
                       {index === 0 ? (
@@ -454,7 +455,7 @@ function SellFormContent() {
               <div className="flex flex-col justify-center gap-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="cursor-pointer rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
-                    {imageLoading ? "Memproses..." : "Upload Foto"}
+                    {imageLoading ? "Memproses..." : "Unggah Foto"}
                     <input
                       type="file"
                       accept="image/*"
@@ -478,7 +479,7 @@ function SellFormContent() {
                   </label>
                 </div>
                 <p className="text-xs font-semibold leading-5 text-slate-500">
-                  Upload 1 sampai 2 foto. Foto pertama menjadi cover. Maksimal 500KB per foto setelah kompres.
+                  Unggah 1 sampai 2 foto. Foto pertama menjadi cover. Maksimal 500KB per foto setelah kompres.
                 </p>
               </div>
             </div>

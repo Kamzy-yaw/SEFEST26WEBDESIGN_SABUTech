@@ -1,18 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/logic/auth.logic";
 import { useProductDetail } from "@/logic/products.logic";
+import { createInterestTransaction } from "@/logic/transactions.logic";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { ProductGallery } from "@/components/ProductGallery";
 import { SellerInfo } from "@/components/SellerInfo";
 import { formatCondition, formatRelativeTime, formatRupiah } from "@/lib/format";
+import type { TransactionMethod } from "@/lib/types";
 
 export function ProductDetailView() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
+  const [isInterestModalOpen, setIsInterestModalOpen] = useState(false);
+  const [interestMethod, setInterestMethod] = useState<TransactionMethod>("cod");
+  const [interestLoading, setInterestLoading] = useState(false);
+  const [interestError, setInterestError] = useState<string | null>(null);
+  const [interestSuccess, setInterestSuccess] = useState<string | null>(null);
   const {
     product,
     selectedImage,
@@ -70,6 +78,46 @@ export function ProductDetailView() {
   }
 
   const minusDetail = product.minusDetail ?? product.conditionDetail;
+  const productStatus = product.status ?? "active";
+  const isSold = productStatus === "sold";
+  const isActive = productStatus === "active";
+
+  const handleOpenInterest = () => {
+    setInterestError(null);
+    setInterestSuccess(null);
+
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+      return;
+    }
+
+    setIsInterestModalOpen(true);
+  };
+
+  const handleSubmitInterest = async () => {
+    if (!user) return;
+
+    setInterestLoading(true);
+    setInterestError(null);
+    setInterestSuccess(null);
+
+    try {
+      await createInterestTransaction({
+        product,
+        buyerId: user.uid,
+        buyerName: profile?.name || user.displayName || "Pembeli Eco Market",
+        buyerAvatar: profile?.photoURL || user.photoURL || null,
+        buyerWhatsapp: profile?.whatsappNumber ?? null,
+        method: interestMethod,
+      });
+      setInterestSuccess("Minat kamu sudah dikirim ke penjual.");
+      setIsInterestModalOpen(false);
+    } catch (err) {
+      setInterestError(err instanceof Error ? err.message : "Gagal mengirim minat.");
+    } finally {
+      setInterestLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#f6fbf6] py-10 text-slate-950">
@@ -97,6 +145,15 @@ export function ProductDetailView() {
 
           <aside className="space-y-5 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/5">
             <div className="flex flex-wrap gap-2">
+              {isSold ? (
+                <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-red-700">
+                  Terjual
+                </span>
+              ) : productStatus === "reserved" ? (
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-amber-700">
+                  Dalam Transaksi
+                </span>
+              ) : null}
               <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-emerald-700">
                 {product.category}
               </span>
@@ -114,7 +171,7 @@ export function ProductDetailView() {
                 {formatRupiah(product.price)}
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-500">
-                Upload {formatRelativeTime(product.createdAt)}
+                Diunggah {formatRelativeTime(product.createdAt)}
               </p>
             </div>
 
@@ -154,25 +211,50 @@ export function ProductDetailView() {
             <SellerInfo
               name={sellerName}
               avatar={sellerAvatar}
-              status={product.sellerStatus}
               contributionCount={product.sellerContributionCount}
               isWhatsappConnected={isWhatsappConnected}
             />
 
+            {interestSuccess ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-sm font-bold text-emerald-800">{interestSuccess}</p>
+              </div>
+            ) : null}
+
+            {isSold ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-bold text-red-800">
+                  Produk ini sudah terjual dan tidak menerima transaksi baru.
+                </p>
+              </div>
+            ) : null}
+
             <div className={`grid gap-3 ${isOwner ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!isWhatsappConnected}
-                className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold transition ${
-                  isWhatsappConnected
-                    ? "border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700"
-                    : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
-                }`}
-              >
-                {isWhatsappConnected ? "Chat Seller" : "WhatsApp seller belum tersedia"}
-              </a>
+              {!isOwner ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleOpenInterest}
+                    disabled={!isActive}
+                    className="rounded-2xl border border-emerald-200 bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    Saya Minat
+                  </button>
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-disabled={!isWhatsappConnected || !isActive}
+                    className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold transition ${
+                      isWhatsappConnected && isActive
+                        ? "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                        : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {isWhatsappConnected ? "Chat Penjual" : "WhatsApp penjual belum tersedia"}
+                  </a>
+                </>
+              ) : null}
               <Link
                 href="/login/market"
                 className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
@@ -206,6 +288,73 @@ export function ProductDetailView() {
           </aside>
         </div>
       </div>
+
+      {isInterestModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-emerald-100 bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-black text-slate-950">Pilih metode transaksi</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+              Pembayaran dan pengiriman dilakukan berdasarkan kesepakatan pembeli dan penjual. Eco Market membantu pencatatan transaksi dan dampak barang diselamatkan.
+            </p>
+
+            {interestError ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3">
+                <p className="text-sm font-bold text-red-800">{interestError}</p>
+              </div>
+            ) : null}
+
+            <div className="mt-5 grid gap-3">
+              <button
+                type="button"
+                onClick={() => setInterestMethod("cod")}
+                className={`rounded-2xl border p-4 text-left transition ${
+                  interestMethod === "cod"
+                    ? "border-emerald-400 bg-emerald-50"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
+                }`}
+              >
+                <p className="font-black text-slate-950">COD / Janjian</p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Bertemu langsung dan selesaikan transaksi sesuai kesepakatan.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInterestMethod("shipping")}
+                className={`rounded-2xl border p-4 text-left transition ${
+                  interestMethod === "shipping"
+                    ? "border-emerald-400 bg-emerald-50"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
+                }`}
+              >
+                <p className="font-black text-slate-950">Kirim Kurir</p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  Penjual akan mengirim barang setelah kesepakatan di WhatsApp.
+                </p>
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setIsInterestModalOpen(false)}
+                disabled={interestLoading}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitInterest}
+                disabled={interestLoading}
+                className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {interestLoading ? "Mengirim..." : "Kirim Minat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

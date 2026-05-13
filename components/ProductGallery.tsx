@@ -1,5 +1,7 @@
 "use client";
 
+import { SafeImage } from "@/components/SafeImage";
+
 type ProductGalleryProps = {
   images: string[];
   selectedImage: string;
@@ -24,10 +26,10 @@ export function ProductGallery({ images, selectedImage, onSelectImage }: Product
                 selectedImage === imageUrl ? "border-emerald-500" : "border-emerald-100"
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <SafeImage
                 src={imageUrl}
-                alt={`Foto produk ${index + 1}`}
+                fallbackSrc="/placeholder-product.svg"
+                alt=""
                 className="h-full w-full object-cover"
               />
             </button>

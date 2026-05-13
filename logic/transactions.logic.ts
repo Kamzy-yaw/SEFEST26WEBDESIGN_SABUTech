@@ -1,6 +1,12 @@
 export { useTransactions } from "@/hooks/useTransactions";
 export {
-  createTransaction,
+  acceptTransaction,
+  cancelTransaction,
+  completeTransaction,
+  createInterestTransaction,
+  markTransactionShipping,
+  updateTransactionStatus,
   subscribeToSellerTransactions,
+  subscribeToBuyerTransactions,
   type CreateTransactionInput,
 } from "@/lib/transactions";

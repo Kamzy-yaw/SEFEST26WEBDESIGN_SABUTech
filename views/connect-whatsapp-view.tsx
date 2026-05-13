@@ -75,7 +75,7 @@ function ConnectWhatsAppPageContent() {
         <section className="rounded-3xl border border-emerald-100 bg-white p-8 shadow-sm shadow-emerald-950/5">
           <h1 className="mt-3 text-4xl font-black text-slate-950">Hubungkan WhatsApp</h1>
           <p className="mt-2 leading-relaxed text-slate-600">
-                Nomor WhatsApp digunakan untuk tombol obrolan seller agar pembeli bisa langsung menghubungi Anda.
+                Nomor WhatsApp digunakan untuk tombol obrolan penjual agar pembeli bisa langsung menghubungi Anda.
             Nomor akan tersimpan di profil dan setiap produk yang Anda jual.
           </p>
 

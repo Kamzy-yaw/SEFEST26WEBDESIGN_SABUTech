@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { SafeImage } from "@/components/SafeImage";
 
 type UserSectionProps = {
   compact?: boolean;
@@ -10,7 +11,7 @@ type UserSectionProps = {
 export function UserSection({ compact = false }: UserSectionProps) {
   const { user, profile, loading, error, loginWithGoogle, logout } = useAuth();
   const avatar = profile?.photoURL || user?.photoURL || "/default-avatar.png";
-  const name = profile?.name || user?.displayName || "Eco Seller";
+  const name = profile?.name || user?.displayName || "Penjual Eco";
 
   if (!user) {
     return (
@@ -32,17 +33,21 @@ export function UserSection({ compact = false }: UserSectionProps) {
     <div className="flex flex-wrap items-center gap-3">
       <Link
         href="/dashboard"
-        aria-label="Buka dashboard seller"
-        title="Dashboard seller"
+        aria-label="Buka dashboard penjual"
+        title="Dashboard penjual"
         className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-white/80 px-3 py-2 transition hover:border-emerald-300 hover:bg-white hover:shadow-sm"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={avatar} alt={name} className="h-9 w-9 rounded-xl object-cover" />
+        <SafeImage
+          src={avatar}
+          fallbackSrc="/default-avatar.png"
+          alt=""
+          className="h-9 w-9 rounded-xl object-cover"
+        />
         {!compact ? (
           <div>
             <p className="text-sm font-black text-slate-900">{name}</p>
             <p className="text-xs font-bold text-emerald-700">
-              {profile?.isWhatsappConnected ? "WhatsApp Terhubung" : "Belum hubungkan WhatsApp"}
+              {profile?.isWhatsappConnected ? "WhatsApp Terhubung" : "WhatsApp belum terhubung"}
             </p>
           </div>
         ) : null}
