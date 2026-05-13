@@ -10,7 +10,7 @@ type ProductGalleryProps = {
 
 export function ProductGallery({ images, selectedImage, onSelectImage }: ProductGalleryProps) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm shadow-emerald-950/5">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm shadow-emerald-950/5">
       <div
         className="aspect-[4/3] bg-[radial-gradient(circle_at_20%_20%,#bbf7d0_0,#ecfdf5_32%,#f8fafc_70%)] bg-cover bg-center"
         style={{ backgroundImage: `url(${selectedImage})` }}

@@ -91,6 +91,11 @@ export function ProductDetailView() {
       return;
     }
 
+    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
+      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+      return;
+    }
+
     setIsInterestModalOpen(true);
   };
 
@@ -120,8 +125,8 @@ export function ProductDetailView() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6fbf6] py-10 text-slate-950">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6fbf6] py-10 text-slate-950">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
         <button
           type="button"
           onClick={() => router.back()}
@@ -136,14 +141,14 @@ export function ProductDetailView() {
           Kembali ke Marketplace
         </Link>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <ProductGallery
             images={productImages}
             selectedImage={selectedImage}
             onSelectImage={setSelectedImage}
           />
 
-          <aside className="space-y-5 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/5">
+          <aside className="min-w-0 space-y-5 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/5">
             <div className="flex flex-wrap gap-2">
               {isSold ? (
                 <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-red-700">
@@ -166,8 +171,8 @@ export function ProductDetailView() {
             </div>
 
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-950">{product.name}</h1>
-              <p className="mt-3 text-3xl font-black text-emerald-600">
+              <h1 className="break-words text-3xl font-black tracking-tight text-slate-950">{product.name}</h1>
+              <p className="mt-3 break-words text-3xl font-black text-emerald-600">
                 {formatRupiah(product.price)}
               </p>
               <p className="mt-2 text-sm font-semibold text-slate-500">
@@ -178,24 +183,24 @@ export function ProductDetailView() {
             {product.description ? (
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                 <p className="text-sm font-black text-emerald-900">Deskripsi Produk</p>
-                <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-slate-700">
+                <p className="mt-2 whitespace-pre-line break-words text-sm font-semibold leading-6 text-slate-700">
                   {product.description}
                 </p>
               </div>
             ) : null}
 
             <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>Tahun</span>
                 <span className="font-bold text-slate-800">{product.year}</span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>Lokasi</span>
-                <span className="font-bold text-slate-800">{product.location}</span>
+                <span className="break-words text-right font-bold text-slate-800">{product.location}</span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span>Dampak</span>
-                <span className="font-bold text-emerald-700">
+                <span className="break-words text-right font-bold text-emerald-700">
                   🔥 {product.ecoSaved} barang berhasil diselamatkan
                 </span>
               </div>
@@ -204,7 +209,7 @@ export function ProductDetailView() {
             {product.condition === "minus" && minusDetail ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm font-black text-amber-900">Detail minus</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">{minusDetail}</p>
+                <p className="mt-2 break-words text-sm font-semibold leading-6 text-amber-800">{minusDetail}</p>
               </div>
             ) : null}
 
