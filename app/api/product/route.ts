@@ -3,7 +3,7 @@ import { getProducts, addProduct } from "@/lib/storage";
 import { Product, ProductCategory, ProductCondition, ProductSubcategory } from "@/lib/types";
 import { randomUUID } from "crypto";
 import { detectCategory, calculateEcoSaved } from "@/lib/utils";
-import { isProductCategory, isProductSubcategory } from "@/app/market/_data/categories";
+import { isProductCategory, isProductSubcategory } from "@/app/login/market/_data/categories";
 
 type ProductRequestBody = {
   name?: string;

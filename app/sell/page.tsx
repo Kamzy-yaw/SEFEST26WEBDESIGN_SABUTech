@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { categoryDefinitions, getSubcategories } from "@/app/market/_data/categories";
+import { categoryDefinitions, getSubcategories } from "@/app/login/market/_data/categories";
 import type { ProductCategory, ProductCondition, ProductSubcategory } from "@/lib/types";
 import { useProductDraft } from "@/hooks/useProductDraft";
 import { parseEstimatedPrice } from "@/utils/storage";
