@@ -9,6 +9,7 @@ type ProductRequestBody = {
   name?: string;
   year?: number | string;
   price?: number | string;
+  description?: string;
   condition?: ProductCondition;
   conditionDetail?: string;
   imageUrl?: string;
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
       name,
       year,
       price,
+      description,
       condition = "good",
       conditionDetail,
       imageUrl,
@@ -103,9 +105,11 @@ export async function POST(req: Request) {
       name,
       year: Number(year),
       price: Number(price),
+      description: description?.trim() || "Deskripsi produk belum tersedia.",
       condition,
       conditionDetail: condition === "minus" ? cleanConditionDetail : undefined,
       imageUrl: imageUrl?.trim() || undefined,
+      imageUrls: imageUrl?.trim() ? [imageUrl.trim()] : undefined,
       location: location || "Indonesia",
       city: location?.split(",")[0].trim() || "Indonesia",
       category: productCategory,

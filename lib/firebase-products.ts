@@ -8,6 +8,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  where,
   type Timestamp,
 } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -28,9 +29,10 @@ export type CreateProductInput = {
   name: string;
   year: number;
   price: number;
+  description: string;
   condition: ProductCondition;
   conditionDetail?: string;
-  imageFile?: File;
+  imageFiles?: File[];
   location: string;
   category: ProductCategory;
   subcategory: ProductSubcategory;
@@ -41,6 +43,8 @@ type FirestoreProduct = Omit<Product, "id" | "createdAt"> & {
   sellerId: string;
   city: string;
   imageUrl?: string | null;
+  imageUrls?: string[] | null;
+  description?: string | null;
   minusDetail?: string | null;
   conditionDetail?: string | null;
   sellerAvatar?: string | null;
@@ -59,10 +63,12 @@ function toProduct(id: string, data: FirestoreProduct): Product {
     name: data.name,
     year: data.year,
     price: data.price,
+    description: data.description ?? "",
     condition: data.condition,
     minusDetail: data.minusDetail ?? data.conditionDetail ?? undefined,
     conditionDetail: data.conditionDetail ?? data.minusDetail ?? undefined,
-    imageUrl: data.imageUrl ?? undefined,
+    imageUrl: data.imageUrl ?? data.imageUrls?.[0] ?? undefined,
+    imageUrls: data.imageUrls ?? (data.imageUrl ? [data.imageUrl] : undefined),
     location: data.location,
     city: data.city || toCity(data.location),
     category: data.category,
@@ -72,9 +78,9 @@ function toProduct(id: string, data: FirestoreProduct): Product {
     sellerAvatar: data.sellerAvatar ?? undefined,
     sellerPhone: data.sellerPhone ?? undefined,
     sellerVerified: data.sellerVerified ?? false,
-    sellerContributionCount: data.sellerContributionCount,
-    sellerStatus: data.sellerStatus,
-    ecoSaved: data.ecoSaved,
+    sellerContributionCount: data.sellerContributionCount ?? 1,
+    sellerStatus: data.sellerStatus ?? "Eco Seller",
+    ecoSaved: data.ecoSaved ?? 1,
     createdAt: data.createdAt?.toDate().toISOString() ?? new Date().toISOString(),
   };
 }
@@ -124,11 +130,42 @@ export async function uploadProductImage(file: File, sellerId: string) {
   return getDownloadURL(snapshot.ref);
 }
 
+export function subscribeToSellerProducts(
+  sellerId: string,
+  onProducts: (products: Product[]) => void,
+  onError: (message: string) => void,
+) {
+  const { db } = getFirebaseServices();
+  const productsQuery = query(
+    collection(db, firebaseCollections.products),
+    where("sellerId", "==", sellerId),
+  );
+
+  return onSnapshot(
+    productsQuery,
+    (snapshot) => {
+      const products = snapshot.docs
+        .map((productDoc) => toProduct(productDoc.id, productDoc.data() as FirestoreProduct))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      onProducts(products);
+    },
+    (error) => {
+      onError(error.message);
+    },
+  );
+}
+
+export async function uploadProductImages(files: File[], sellerId: string) {
+  return Promise.all(files.map((file) => uploadProductImage(file, sellerId)));
+}
+
 export async function createProduct(input: CreateProductInput) {
   const { db } = getFirebaseServices();
-  const imageUrl = input.imageFile
-    ? await uploadProductImage(input.imageFile, input.seller.uid)
-    : undefined;
+  const imageUrls = input.imageFiles?.length
+    ? await uploadProductImages(input.imageFiles, input.seller.uid)
+    : [];
+  const coverImageUrl = imageUrls[0] ?? null;
   const userRef = doc(db, firebaseCollections.users, input.seller.uid);
   const userSnapshot = await getDoc(userRef);
   const userProfile = userSnapshot.data() as Partial<UserProfile> | undefined;
@@ -147,10 +184,12 @@ export async function createProduct(input: CreateProductInput) {
     name: input.name,
     year: input.year,
     price: input.price,
+    description: input.description,
     condition: input.condition,
     minusDetail: input.conditionDetail ?? null,
     conditionDetail: input.conditionDetail ?? null,
-    imageUrl: imageUrl ?? null,
+    imageUrl: coverImageUrl,
+    imageUrls,
     location: input.location,
     city: toCity(input.location),
     category: input.category,
@@ -200,11 +239,15 @@ export async function deleteProduct(productId: string, userId: string) {
     throw new Error("Anda tidak memiliki izin untuk menghapus produk ini.");
   }
 
-  // Delete image from storage if exists
-  if (productData.imageUrl) {
+  // Delete uploaded product images from storage if they exist.
+  const imageUrls = new Set([
+    ...(productData.imageUrls ?? []),
+    ...(productData.imageUrl ? [productData.imageUrl] : []),
+  ]);
+
+  for (const imageUrl of imageUrls) {
     try {
-      // Parse the image URL to extract the storage path
-      const imageRef = ref(storage, productData.imageUrl);
+      const imageRef = ref(storage, imageUrl);
       await deleteObject(imageRef);
     } catch (error) {
       // Log but don't throw - image deletion failure shouldn't block product deletion

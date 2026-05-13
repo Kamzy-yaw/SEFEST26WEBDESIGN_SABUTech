@@ -8,6 +8,7 @@ type ProductCardProps = {
 
 export function ProductCard({ product }: ProductCardProps) {
   const sellerAvatar = product.sellerAvatar || "/default-avatar.png";
+  const coverImage = product.imageUrls?.[0] || product.imageUrl || "/placeholder-product.svg";
   const minusDetail = product.minusDetail ?? product.conditionDetail;
   const conditionTone =
     product.condition === "minus"
@@ -20,11 +21,9 @@ export function ProductCard({ product }: ProductCardProps) {
     <article className="group overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm shadow-emerald-950/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-950/10">
       <div
         className="relative h-44 bg-[radial-gradient(circle_at_20%_20%,#bbf7d0_0,#ecfdf5_32%,#f8fafc_70%)] bg-cover bg-center"
-        style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
+        style={{ backgroundImage: `url(${coverImage})` }}
       >
-        {product.imageUrl ? (
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
-        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
         <div className="absolute left-5 top-5 rounded-full bg-white/90 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700 shadow-sm">
           {product.category}
         </div>

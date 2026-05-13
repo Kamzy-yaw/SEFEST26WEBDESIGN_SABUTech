@@ -17,6 +17,7 @@ export type UserProfile = {
   isWhatsappConnected: boolean;
   contributionCount: number;
   createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
 function normalizeProfile(user: User, existing?: Partial<UserProfile>): UserProfile {
@@ -32,7 +33,7 @@ function normalizeProfile(user: User, existing?: Partial<UserProfile>): UserProf
   };
 }
 
-function normalizeWhatsAppNumber(phoneNumber: string): string {
+export function normalizeWhatsAppNumber(phoneNumber: string): string {
   const trimmed = phoneNumber.trim().replace(/[\s\-()]/g, "");
 
   // Already in correct format
@@ -89,6 +90,40 @@ export async function updateUserWhatsApp(userId: string, whatsappNumber: string)
     userRef,
     {
       whatsappNumber: normalized,
+      isWhatsappConnected: true,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function updateUserProfile(
+  userId: string,
+  input: {
+    name: string;
+    whatsappNumber: string;
+  },
+) {
+  const { db } = getFirebaseServices();
+  const name = input.name.trim();
+  const normalizedWhatsapp = normalizeWhatsAppNumber(input.whatsappNumber);
+
+  if (!name) {
+    throw new Error("Nama seller wajib diisi.");
+  }
+
+  if (!isValidWhatsAppNumber(input.whatsappNumber)) {
+    throw new Error("Format nomor WhatsApp tidak valid. Gunakan 08xx, 628xx, atau +628xx.");
+  }
+
+  const userRef = doc(db, firebaseCollections.users, userId);
+
+  await setDoc(
+    userRef,
+    {
+      uid: userId,
+      name,
+      whatsappNumber: normalizedWhatsapp,
       isWhatsappConnected: true,
       updatedAt: serverTimestamp(),
     },

@@ -8,9 +8,11 @@ import { useProductDraft } from "@/hooks/useProductDraft";
 import { parseEstimatedPrice } from "@/utils/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { createProduct } from "@/lib/firebase-products";
+import { formatRupiah, parseRupiah } from "@/utils/price";
 
 type SellFormData = {
   name: string;
+  description: string;
   year: string;
   price: string;
   category: ProductCategory | "";
@@ -34,8 +36,11 @@ function SellFormContent() {
 
   const [formData, setFormData] = useState<SellFormData>(() => ({
     name: searchParams.get("name") || "",
+    description: "",
     year: searchParams.get("year") || String(new Date().getFullYear()),
-    price: searchParams.get("price") || "",
+    price: searchParams.get("price")
+      ? formatRupiah(Number(searchParams.get("price")?.replace(/[^\d]/g, "") ?? 0))
+      : "",
     category: (searchParams.get("category") as ProductCategory | null) || "",
     subcategory: (searchParams.get("subcategory") as ProductSubcategory | null) || "",
     condition: initialCondition,
@@ -46,7 +51,9 @@ function SellFormContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [imageFile, setImageFile] = useState<File | undefined>(undefined);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageLoading, setImageLoading] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -62,8 +69,11 @@ function SellFormContent() {
   useEffect(() => {
     const getInitialFormData = (): SellFormData => ({
       name: searchParams.get("name") || "",
+      description: "",
       year: searchParams.get("year") || String(new Date().getFullYear()),
-      price: searchParams.get("price") || "",
+      price: searchParams.get("price")
+        ? formatRupiah(Number(searchParams.get("price")?.replace(/[^\d]/g, "") ?? 0))
+        : "",
       category: (searchParams.get("category") as ProductCategory | null) || "",
       subcategory: (searchParams.get("subcategory") as ProductSubcategory | null) || "",
       condition: initialCondition,
@@ -85,7 +95,7 @@ function SellFormContent() {
       ...prev,
       name: draft.productName,
       year: draft.year,
-      price: parseEstimatedPrice(draft.estimatedPrice),
+      price: formatRupiah(Number(parseEstimatedPrice(draft.estimatedPrice))),
       condition: draft.condition,
       conditionDetail: draft.condition === "minus" ? draft.minusDetail : "",
     }));
@@ -107,30 +117,73 @@ function SellFormContent() {
   };
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (imageFiles.length + selectedFiles.length > 5) {
+      setError("Maksimal 5 foto produk.");
+      event.target.value = "";
+      return;
+    }
+
+    if (selectedFiles.some((file) => !file.type.startsWith("image/"))) {
       setError("File harus berupa gambar.");
+      event.target.value = "";
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Ukuran foto maksimal 2MB untuk MVP ini.");
+    if (selectedFiles.some((file) => file.size > 2 * 1024 * 1024)) {
+      setError("Ukuran setiap foto maksimal 2MB untuk MVP ini.");
+      event.target.value = "";
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((prev) => ({
-        ...prev,
-        imageUrl: typeof reader.result === "string" ? reader.result : "",
+    setImageLoading(true);
+
+    Promise.all(
+      selectedFiles.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          }),
+      ),
+    )
+      .then((previews) => {
+        setImageFiles((prev) => [...prev, ...selectedFiles]);
+        setImagePreviews((prev) => [...prev, ...previews]);
+        setFormData((prev) => ({
+          ...prev,
+          imageUrl: prev.imageUrl || previews[0] || "",
+        }));
+        setError(null);
+      })
+      .catch(() => setError("Gagal membaca foto. Coba pilih file lain."))
+      .finally(() => setImageLoading(false));
+
+    event.target.value = "";
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+    setImagePreviews((prev) => {
+      const nextPreviews = prev.filter((_, itemIndex) => itemIndex !== index);
+      setFormData((current) => ({
+        ...current,
+        imageUrl: nextPreviews[0] || "",
       }));
-      setImageFile(file);
-      setError(null);
-    };
-    reader.onerror = () => setError("Gagal membaca foto. Coba pilih file lain.");
-    reader.readAsDataURL(file);
+      return nextPreviews;
+    });
+  };
+
+  const handlePriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const priceValue = parseRupiah(event.target.value);
+    setFormData((prev) => ({
+      ...prev,
+      price: formatRupiah(priceValue),
+    }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -140,6 +193,25 @@ function SellFormContent() {
 
     if (formData.condition === "minus" && !formData.conditionDetail.trim()) {
       setError("Jelaskan kekurangan barang untuk kondisi minus.");
+      setLoading(false);
+      return;
+    }
+
+    if (formData.description.trim().length < 20) {
+      setError("Deskripsi produk wajib diisi minimal 20 karakter.");
+      setLoading(false);
+      return;
+    }
+
+    if (imageFiles.length === 0) {
+      setError("Upload minimal 1 foto produk.");
+      setLoading(false);
+      return;
+    }
+
+    const parsedPrice = parseRupiah(formData.price);
+    if (parsedPrice <= 0) {
+      setError("Harga wajib diisi dan harus lebih dari 0.");
       setLoading(false);
       return;
     }
@@ -167,13 +239,14 @@ function SellFormContent() {
       await createProduct({
         name: formData.name,
         year: Number(formData.year),
-        price: Number(formData.price),
+        price: parsedPrice,
+        description: formData.description.trim(),
         category: formData.category,
         subcategory: formData.subcategory,
         condition: formData.condition,
         conditionDetail:
           formData.condition === "minus" ? formData.conditionDetail.trim() : undefined,
-        imageFile,
+        imageFiles,
         location: formData.location,
         seller: {
           uid: user.uid,
@@ -284,6 +357,22 @@ function SellFormContent() {
             />
           </div>
 
+          <div>
+            <label className="mb-2 block text-sm font-bold text-slate-700">Deskripsi Produk *</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Contoh: Pemakaian normal, masih mulus, kelengkapan charger dan box ada, dijual karena upgrade."
+              required
+              rows={4}
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            />
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              Minimal 20 karakter. Ceritakan kondisi, kelengkapan, dan alasan dijual.
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-700">Tahun Pembelian *</label>
@@ -372,57 +461,70 @@ function SellFormContent() {
 
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">Foto Produk</label>
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div className="flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50">
-                {formData.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={formData.imageUrl}
-                    alt="Preview foto produk"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
+            <div className="grid gap-4">
+              {imagePreviews.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  {imagePreviews.map((preview, index) => (
+                    <div
+                      key={preview}
+                      className="relative aspect-square overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={preview}
+                        alt={`Preview foto produk ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                      {index === 0 ? (
+                        <span className="absolute left-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-black text-white">
+                          Cover
+                        </span>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-xs font-black text-slate-700 shadow-sm"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50">
                   <span className="px-4 text-center text-sm font-bold text-emerald-700">
-                    Belum ada foto
+                    {imageLoading ? "Memproses foto..." : "Belum ada foto"}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
               <div className="flex flex-col justify-center gap-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="cursor-pointer rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-50">
-                    Upload Foto
+                    {imageLoading ? "Memproses..." : "Upload Foto"}
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
+                      disabled={imageLoading}
                       onChange={handleImageChange}
                       className="sr-only"
                     />
                   </label>
                   <label className="cursor-pointer rounded-2xl bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-emerald-700">
-                    Buka Kamera
+                    {imageLoading ? "Memproses..." : "Buka Kamera"}
                     <input
                       type="file"
                       accept="image/*"
                       capture="environment"
+                      multiple
+                      disabled={imageLoading}
                       onChange={handleImageChange}
                       className="sr-only"
                     />
                   </label>
                 </div>
-                {formData.imageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, imageUrl: "" }));
-                      setImageFile(undefined);
-                    }}
-                    className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
-                  >
-                    Hapus Foto
-                  </button>
-                ) : null}
                 <p className="text-xs font-semibold leading-5 text-slate-500">
-                  Pilih foto dari device atau ambil langsung dari kamera. Maksimal 2MB.
+                  Upload 1 sampai 5 foto. Foto pertama menjadi cover. Maksimal 2MB per foto.
                 </p>
               </div>
             </div>
@@ -450,12 +552,12 @@ function SellFormContent() {
               </button>
             </div>
             <input
-              type="number"
+              type="text"
               name="price"
               value={formData.price}
-              onChange={handleChange}
-              placeholder="Contoh: 5000000"
-              min="0"
+              onChange={handlePriceChange}
+              placeholder="Contoh: Rp530.000"
+              inputMode="numeric"
               required
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             />
@@ -484,10 +586,10 @@ function SellFormContent() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || imageLoading}
               className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
             >
-              {loading ? "Sedang menyimpan..." : "Jual Barang"}
+              {loading ? "Sedang upload & menyimpan..." : "Jual Barang"}
             </button>
           </div>
         </form>

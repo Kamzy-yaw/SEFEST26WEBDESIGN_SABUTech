@@ -17,6 +17,7 @@ export default function ProductDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
+  const [selectedImage, setSelectedImage] = useState("/placeholder-product.svg");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function ProductDetailPage() {
         }
 
         setProduct(productData);
+        setSelectedImage(productData.imageUrls?.[0] || productData.imageUrl || "/placeholder-product.svg");
 
         try {
           setSellerProfile(await getUserProfile(productData.sellerId));
@@ -87,7 +89,7 @@ export default function ProductDetailPage() {
   const whatsappUrl = useMemo(() => {
     if (!product) return "#";
 
-    const sellerPhone = (sellerProfile?.whatsappNumber ?? product.sellerPhone)?.replace(/[^\d]/g, "");
+    const sellerPhone = sellerProfile?.whatsappNumber?.replace(/[^\d]/g, "");
     const message = `Halo, saya tertarik dengan produk ${product.name} yang Anda jual di Eco Market.`;
 
     return sellerPhone ? `https://wa.me/${sellerPhone}?text=${encodeURIComponent(message)}` : "#";
@@ -129,10 +131,14 @@ export default function ProductDetailPage() {
     );
   }
 
-  const sellerAvatar = product.sellerAvatar || "/default-avatar.png";
-  const productImage = product.imageUrl || "/placeholder-product.svg";
+  const sellerAvatar = sellerProfile?.photoURL || product.sellerAvatar || "/default-avatar.png";
+  const sellerName = sellerProfile?.name || product.sellerName || "Eco Seller";
+  const productImages =
+    product.imageUrls && product.imageUrls.length > 0
+      ? product.imageUrls
+      : [product.imageUrl || "/placeholder-product.svg"];
   const minusDetail = product.minusDetail ?? product.conditionDetail;
-  const sellerWhatsapp = sellerProfile?.whatsappNumber ?? product.sellerPhone;
+  const sellerWhatsapp = sellerProfile?.whatsappNumber;
   const isWhatsappConnected = Boolean(sellerWhatsapp);
 
   return (
@@ -156,8 +162,29 @@ export default function ProductDetailPage() {
           <section className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm shadow-emerald-950/5">
             <div
               className="aspect-[4/3] bg-[radial-gradient(circle_at_20%_20%,#bbf7d0_0,#ecfdf5_32%,#f8fafc_70%)] bg-cover bg-center"
-              style={{ backgroundImage: `url(${productImage})` }}
+              style={{ backgroundImage: `url(${selectedImage})` }}
             />
+            {productImages.length > 1 ? (
+              <div className="grid grid-cols-5 gap-3 p-4">
+                {productImages.map((imageUrl, index) => (
+                  <button
+                    key={`${imageUrl}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedImage(imageUrl)}
+                    className={`aspect-square overflow-hidden rounded-2xl border bg-emerald-50 ${
+                      selectedImage === imageUrl ? "border-emerald-500" : "border-emerald-100"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt={`Foto produk ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </section>
 
           <aside className="space-y-5 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/5">
@@ -182,6 +209,15 @@ export default function ProductDetailPage() {
                 Upload {formatRelativeTime(product.createdAt)}
               </p>
             </div>
+
+            {product.description ? (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <p className="text-sm font-black text-emerald-900">Deskripsi Produk</p>
+                <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-slate-700">
+                  {product.description}
+                </p>
+              </div>
+            ) : null}
 
             <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
               <div className="flex items-center justify-between gap-4">
@@ -211,11 +247,11 @@ export default function ProductDetailPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={sellerAvatar}
-                alt={product.sellerName || "Seller Eco Market"}
+                alt={sellerName}
                 className="h-12 w-12 rounded-2xl object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-slate-900">{product.sellerName}</p>
+                <p className="truncate text-sm font-black text-slate-900">{sellerName}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-emerald-700">
                     {product.sellerStatus || "Penjual Eco"}
@@ -244,7 +280,7 @@ export default function ProductDetailPage() {
                     : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
                 }`}
               >
-                {isWhatsappConnected ? "Chat Seller" : "WhatsApp belum tersedia"}
+                {isWhatsappConnected ? "Chat Seller" : "WhatsApp seller belum tersedia"}
               </a>
               <Link
                 href="/login/market"

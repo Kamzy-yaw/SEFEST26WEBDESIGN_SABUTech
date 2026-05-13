@@ -24,10 +24,12 @@ export type Product = {
   name: string;
   year: number;
   price: number;
+  description: string;
   condition: ProductCondition;
   minusDetail?: string;
   conditionDetail?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   location: string;
   city: string;
   category: ProductCategory;
