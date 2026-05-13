@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { Product } from "@/lib/types";
 import { isFirebaseConfigured } from "@/lib/firebase";
 import { getProductById, deleteProduct } from "@/lib/firebase-products";
+import { getUserProfile, type UserProfile } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { DeleteProductDialog } from "../_components/delete-product-dialog";
 import { formatCondition, formatRelativeTime, formatRupiah } from "../_utils/format";
@@ -15,6 +16,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
+  const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -41,6 +43,12 @@ export default function ProductDetailPage() {
         }
 
         setProduct(productData);
+
+        try {
+          setSellerProfile(await getUserProfile(productData.sellerId));
+        } catch {
+          setSellerProfile(null);
+        }
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Gagal memuat detail produk.");
@@ -68,8 +76,7 @@ export default function ProductDetailPage() {
     try {
       await deleteProduct(params.id, user.uid);
       setIsDeleteDialogOpen(false);
-      // Redirect to marketplace after successful deletion
-      router.push("/market?deleted=true");
+      router.push("/login/market?deleted=true");
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Gagal menghapus produk");
     } finally {
@@ -80,11 +87,11 @@ export default function ProductDetailPage() {
   const whatsappUrl = useMemo(() => {
     if (!product) return "#";
 
-    const sellerPhone = product.sellerPhone?.replace(/[^\d]/g, "");
+    const sellerPhone = (sellerProfile?.whatsappNumber ?? product.sellerPhone)?.replace(/[^\d]/g, "");
     const message = `Halo, saya tertarik dengan produk ${product.name} yang Anda jual di Eco Market.`;
 
     return sellerPhone ? `https://wa.me/${sellerPhone}?text=${encodeURIComponent(message)}` : "#";
-  }, [product]);
+  }, [product, sellerProfile?.whatsappNumber]);
 
   if (loading) {
     return (
@@ -111,7 +118,7 @@ export default function ProductDetailPage() {
           <div className="rounded-3xl border border-red-200 bg-red-50 p-10">
             <p className="text-xl font-black text-red-900">{error || "Produk tidak ditemukan."}</p>
             <Link
-              href="/market"
+              href="/login/market"
               className="mt-6 inline-flex rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
             >
               Kembali ke Marketplace
@@ -123,7 +130,10 @@ export default function ProductDetailPage() {
   }
 
   const sellerAvatar = product.sellerAvatar || "/default-avatar.png";
+  const productImage = product.imageUrl || "/placeholder-product.svg";
   const minusDetail = product.minusDetail ?? product.conditionDetail;
+  const sellerWhatsapp = sellerProfile?.whatsappNumber ?? product.sellerPhone;
+  const isWhatsappConnected = Boolean(sellerWhatsapp);
 
   return (
     <main className="min-h-screen bg-[#f6fbf6] py-10 text-slate-950">
@@ -135,12 +145,18 @@ export default function ProductDetailPage() {
         >
           Kembali
         </button>
+        <Link
+          href="/login/market"
+          className="mb-6 ml-4 inline-flex text-sm font-bold text-emerald-700 transition hover:text-emerald-900"
+        >
+          Kembali ke Marketplace
+        </Link>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
           <section className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm shadow-emerald-950/5">
             <div
               className="aspect-[4/3] bg-[radial-gradient(circle_at_20%_20%,#bbf7d0_0,#ecfdf5_32%,#f8fafc_70%)] bg-cover bg-center"
-              style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
+              style={{ backgroundImage: `url(${productImage})` }}
             />
           </section>
 
@@ -179,7 +195,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center justify-between gap-4">
                 <span>Dampak</span>
                 <span className="font-bold text-emerald-700">
-                  {product.ecoSaved} barang berhasil diselamatkan dari limbah
+                  🔥 {product.ecoSaved} barang berhasil diselamatkan
                 </span>
               </div>
             </div>
@@ -204,7 +220,7 @@ export default function ProductDetailPage() {
                   <span className="rounded-full bg-white px-2 py-0.5 text-xs font-black text-emerald-700">
                     {product.sellerStatus || "Penjual Eco"}
                   </span>
-                  {product.sellerVerified ? (
+                  {isWhatsappConnected ? (
                     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-700">
                       WhatsApp Terhubung
                     </span>
@@ -221,28 +237,21 @@ export default function ProductDetailPage() {
                 href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
-                aria-disabled={!product.sellerPhone}
-                className={`rounded-2xl px-4 py-3 text-center text-sm font-bold text-white transition ${
-                  product.sellerPhone
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "pointer-events-none bg-slate-300"
-                }`}
-              >
-                Saya Minat
-              </a>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                aria-disabled={!product.sellerPhone}
+                aria-disabled={!isWhatsappConnected}
                 className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold transition ${
-                  product.sellerPhone
-                    ? "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                  isWhatsappConnected
+                    ? "border-emerald-200 bg-emerald-600 text-white hover:bg-emerald-700"
                     : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
                 }`}
               >
-                Chat Seller
+                {isWhatsappConnected ? "Chat Seller" : "WhatsApp belum tersedia"}
               </a>
+              <Link
+                href="/login/market"
+                className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-center text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+              >
+                Kembali ke Marketplace
+              </Link>
               {user?.uid === product.sellerId && (
                 <button
                   type="button"

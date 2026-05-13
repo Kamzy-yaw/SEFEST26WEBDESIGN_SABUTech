@@ -1,0 +1,9 @@
+<svg width="900" height="675" viewBox="0 0 900 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="675" fill="#ECFDF5"/>
+  <circle cx="220" cy="160" r="150" fill="#BBF7D0"/>
+  <circle cx="690" cy="520" r="190" fill="#D9F99D"/>
+  <rect x="260" y="190" width="380" height="285" rx="32" fill="white" stroke="#A7F3D0" stroke-width="8"/>
+  <path d="M318 415L404 322L470 382L520 330L590 415H318Z" fill="#34D399"/>
+  <circle cx="540" cy="270" r="36" fill="#86EFAC"/>
+  <text x="450" y="545" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#047857">Eco Market</text>
+</svg>

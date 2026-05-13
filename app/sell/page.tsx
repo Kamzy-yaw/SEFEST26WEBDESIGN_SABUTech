@@ -188,7 +188,7 @@ function SellFormContent() {
       clearDraft();
 
       setTimeout(() => {
-        router.push("/market");
+        router.push("/login/market");
       }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Terjadi kesalahan");

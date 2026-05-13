@@ -96,6 +96,13 @@ export async function updateUserWhatsApp(userId: string, whatsappNumber: string)
   );
 }
 
+export async function getUserProfile(userId: string) {
+  const { db } = getFirebaseServices();
+  const userSnapshot = await getDoc(doc(db, firebaseCollections.users, userId));
+
+  return userSnapshot.exists() ? (userSnapshot.data() as UserProfile) : null;
+}
+
 export function subscribeToUserProfile(
   uid: string,
   onProfile: (profile: UserProfile | null) => void,

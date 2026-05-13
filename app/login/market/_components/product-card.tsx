@@ -95,10 +95,10 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <Link
-          href={`/market/${product.id}`}
+          href={`/login/market/${product.id}`}
           className="block w-full rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white transition group-hover:bg-emerald-600"
         >
-          Lihat Produk
+          Lihat Detail
         </Link>
       </div>
     </article>
