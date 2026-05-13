@@ -14,7 +14,7 @@ function LoginPageContent() {
   useEffect(() => {
     if (loading || !user || !profile) return;
 
-    if (!profile.isPhoneVerified) {
+    if (!profile.isWhatsappConnected) {
       if (redirectTo.startsWith("/verify-phone")) {
         router.replace(redirectTo);
         return;
@@ -38,7 +38,7 @@ function LoginPageContent() {
           <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Eco Market</p>
           <h1 className="mt-3 text-4xl font-black text-slate-950">Login Seller</h1>
           <p className="mt-2 text-slate-600">
-            Masuk dengan Google untuk mulai menjual barang bekas dan membangun reputasi seller.
+            Masuk dengan Google untuk mulai menjual barang bekas dan berkontribusi pada ekonomi sirkular.
           </p>
 
           {error ? (

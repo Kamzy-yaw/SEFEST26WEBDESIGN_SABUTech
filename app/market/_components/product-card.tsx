@@ -55,11 +55,11 @@ export function ProductCard({ product }: ProductCardProps) {
               Oleh: <span className="font-black text-slate-800">{product.sellerName}</span>
             </span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-black text-emerald-700">
-              {product.sellerStatus || "Eco Seller"}
+              {product.sellerStatus || "Penjual Eco"}
             </span>
             {product.sellerVerified ? (
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-700">
-                Verified Seller
+                WhatsApp Terhubung
               </span>
             ) : null}
             <span className="text-slate-400">-</span>
@@ -89,7 +89,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-center justify-between gap-4">
             <span>Dampak</span>
             <span className="font-bold text-emerald-700">
-              {product.ecoSaved} item diselamatkan
+              {product.ecoSaved} barang diselamatkan
             </span>
           </div>
         </div>
@@ -98,7 +98,7 @@ export function ProductCard({ product }: ProductCardProps) {
           href={`/market/${product.id}`}
           className="block w-full rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-bold text-white transition group-hover:bg-emerald-600"
         >
-          Lihat Detail
+          Lihat Produk
         </Link>
       </div>
     </article>

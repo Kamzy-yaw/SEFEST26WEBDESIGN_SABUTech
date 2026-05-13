@@ -54,7 +54,7 @@ function SellFormContent() {
       router.replace(`/login?redirect=${encodeURIComponent("/sell")}`);
       return;
     }
-    if (profile && !profile.isPhoneVerified) {
+    if (profile && !profile.isWhatsappConnected) {
       router.replace(`/verify-phone?redirect=${encodeURIComponent("/sell")}`);
     }
   }, [authLoading, profile, router, user]);
@@ -156,8 +156,8 @@ function SellFormContent() {
       return;
     }
 
-    if (!profile?.isPhoneVerified) {
-      setError("Verifikasi nomor HP dulu sebelum menjual barang.");
+    if (!profile?.isWhatsappConnected) {
+      setError("Hubungkan WhatsApp dulu sebelum menjual barang.");
       setLoading(false);
       router.push(`/verify-phone?redirect=${encodeURIComponent("/sell")}`);
       return;
@@ -179,8 +179,8 @@ function SellFormContent() {
           uid: user.uid,
           name: profile.name || user.displayName || "Eco Seller",
           avatar: profile.photoURL || user.photoURL || undefined,
-          phoneNumber: profile.phoneNumber,
-          isPhoneVerified: profile.isPhoneVerified,
+          phoneNumber: profile.whatsappNumber,
+          isPhoneVerified: profile.isWhatsappConnected,
         },
       });
 
@@ -254,11 +254,11 @@ function SellFormContent() {
                 {user ? profile?.name || user.displayName || "Eco Seller" : "Login seller"}
               </p>
               <p className="text-xs font-semibold text-emerald-700">
-                {user && profile?.isPhoneVerified
-                  ? "Akun seller sudah terverifikasi dan siap menerima chat WhatsApp."
+                {user && profile?.isWhatsappConnected
+                  ? "Akun sudah terhubung WhatsApp dan siap menerima pesan pembeli."
                   : user
-                    ? "Verifikasi nomor HP agar bisa menjual barang."
-                  : "Login Google untuk menyimpan produk ke marketplace."}
+                    ? "Hubungkan WhatsApp untuk bisa menjual barang."
+                  : "Login dengan Google untuk memulai menjual."}
               </p>
             </div>
             <button

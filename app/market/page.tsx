@@ -105,14 +105,14 @@ export default function MarketPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-3xl bg-slate-950 p-5 text-white">
                 <p className="text-3xl font-black">{products.length}</p>
-                <p className="mt-1 text-sm text-slate-300">Produk aktif</p>
+                <p className="mt-1 text-sm text-slate-300">Barang Dijual</p>
               </div>
               <div className="rounded-3xl bg-emerald-600 p-5 text-white">
                 <p className="text-3xl font-black">🔥 {totalSaved}</p>
-                <p className="mt-1 text-sm text-emerald-50">barang diselamatkan</p>
+                <p className="mt-1 text-sm text-emerald-50">Barang Diselamatkan</p>
               </div>
               <div className="col-span-2 rounded-3xl bg-white p-5">
-                <p className="text-sm font-bold text-slate-500">Kategori populer</p>
+                <p className="text-sm font-bold text-slate-500">Kategori Populer</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {categoryOptions.slice(1).map((category) => (
                     <span

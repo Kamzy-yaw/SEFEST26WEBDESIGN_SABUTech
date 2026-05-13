@@ -1,11 +1,7 @@
 import {
   GoogleAuthProvider,
-  RecaptchaVerifier,
-  linkWithPhoneNumber,
   signInWithPopup,
   signOut,
-  type ApplicationVerifier,
-  type ConfirmationResult,
   type User,
 } from "firebase/auth";
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
@@ -17,8 +13,8 @@ export type UserProfile = {
   name: string;
   email: string | null;
   photoURL: string | null;
-  phoneNumber: string | null;
-  isPhoneVerified: boolean;
+  whatsappNumber: string | null;
+  isWhatsappConnected: boolean;
   contributionCount: number;
   createdAt?: unknown;
 };
@@ -29,11 +25,34 @@ function normalizeProfile(user: User, existing?: Partial<UserProfile>): UserProf
     name: existing?.name || user.displayName || "Eco Seller",
     email: existing?.email ?? user.email ?? null,
     photoURL: existing?.photoURL ?? user.photoURL ?? null,
-    phoneNumber: existing?.phoneNumber ?? user.phoneNumber ?? null,
-    isPhoneVerified: existing?.isPhoneVerified ?? Boolean(user.phoneNumber),
+    whatsappNumber: existing?.whatsappNumber ?? null,
+    isWhatsappConnected: existing?.isWhatsappConnected ?? false,
     contributionCount: existing?.contributionCount ?? 0,
     createdAt: existing?.createdAt,
   };
+}
+
+function normalizeWhatsAppNumber(phoneNumber: string): string {
+  const trimmed = phoneNumber.trim().replace(/[\s\-()]/g, "");
+
+  // Already in correct format
+  if (trimmed.startsWith("628")) return trimmed;
+
+  // +628xxx format
+  if (trimmed.startsWith("+628")) return trimmed.slice(1);
+
+  // 08xxx format
+  if (trimmed.startsWith("08")) return `62${trimmed.slice(1)}`;
+
+  // 628xxx without +
+  if (trimmed.startsWith("628")) return trimmed;
+
+  return trimmed;
+}
+
+export function isValidWhatsAppNumber(phoneNumber: string): boolean {
+  const normalized = normalizeWhatsAppNumber(phoneNumber);
+  return /^628\d{7,13}$/.test(normalized);
 }
 
 export async function upsertUserProfile(user: User) {
@@ -54,6 +73,27 @@ export async function upsertUserProfile(user: User) {
   );
 
   return profile;
+}
+
+export async function updateUserWhatsApp(userId: string, whatsappNumber: string) {
+  const { db } = getFirebaseServices();
+  const normalized = normalizeWhatsAppNumber(whatsappNumber);
+
+  if (!isValidWhatsAppNumber(whatsappNumber)) {
+    throw new Error("Format nomor WhatsApp tidak valid. Gunakan 08xx atau 62xx.");
+  }
+
+  const userRef = doc(db, firebaseCollections.users, userId);
+
+  await setDoc(
+    userRef,
+    {
+      whatsappNumber: normalized,
+      isWhatsappConnected: true,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export function subscribeToUserProfile(
@@ -82,36 +122,4 @@ export async function loginWithGooglePopup() {
 export async function logoutUser() {
   const { auth } = getFirebaseServices();
   await signOut(auth);
-}
-
-export function createRecaptchaVerifier(containerId: string) {
-  const { auth } = getFirebaseServices();
-  return new RecaptchaVerifier(auth, containerId, {
-    size: "normal",
-  });
-}
-
-export async function sendPhoneOtp(user: User, phoneNumber: string, verifier: ApplicationVerifier) {
-  return linkWithPhoneNumber(user, phoneNumber, verifier);
-}
-
-export async function confirmPhoneOtp(
-  confirmationResult: ConfirmationResult,
-  code: string,
-  phoneNumber: string,
-) {
-  const result = await confirmationResult.confirm(code);
-  const { db } = getFirebaseServices();
-
-  await setDoc(
-    doc(db, firebaseCollections.users, result.user.uid),
-    {
-      phoneNumber,
-      isPhoneVerified: true,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
-
-  return result.user;
 }

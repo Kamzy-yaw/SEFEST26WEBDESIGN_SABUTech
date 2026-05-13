@@ -1,35 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
-import { confirmPhoneOtp, createRecaptchaVerifier, sendPhoneOtp } from "@/lib/auth";
+import { updateUserWhatsApp, isValidWhatsAppNumber } from "@/lib/auth";
 
-function normalizeIndonesianPhone(value: string) {
-  const trimmed = value.trim().replace(/[\s-]/g, "");
-
-  if (trimmed.startsWith("+628")) return trimmed;
-  if (trimmed.startsWith("08")) return `+62${trimmed.slice(1)}`;
-  if (trimmed.startsWith("628")) return `+${trimmed}`;
-
-  return trimmed;
-}
-
-function VerifyPhonePageContent() {
+function ConnectWhatsAppPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/sell";
   const { user, profile, loading: authLoading } = useAuth();
-  const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const normalizedPhone = useMemo(() => normalizeIndonesianPhone(phoneNumber), [phoneNumber]);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,68 +24,42 @@ function VerifyPhonePageContent() {
       );
       return;
     }
-    if (profile?.isPhoneVerified) {
+    if (profile?.isWhatsappConnected) {
       router.replace(redirectTo);
     }
-  }, [authLoading, profile?.isPhoneVerified, redirectTo, router, user]);
+  }, [authLoading, profile?.isWhatsappConnected, redirectTo, router, user]);
 
-  useEffect(() => {
-    if (!user || recaptchaRef.current) return;
-    recaptchaRef.current = createRecaptchaVerifier("recaptcha-container");
-
-    return () => {
-      recaptchaRef.current?.clear();
-      recaptchaRef.current = null;
-    };
-  }, [user]);
-
-  const handleSendOtp = async (event: React.FormEvent) => {
+  const handleConnectWhatsApp = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setSuccess(false);
 
-    if (!user || !recaptchaRef.current) {
-      setError("Login Google diperlukan sebelum verifikasi nomor.");
+    if (!user) {
+      setError("Login Google diperlukan terlebih dahulu.");
       return;
     }
 
-    if (!/^\+628\d{7,13}$/.test(normalizedPhone)) {
-      setError("Gunakan format nomor Indonesia, contoh: +6281234567890.");
+    if (!whatsappNumber.trim()) {
+      setError("Masukkan nomor WhatsApp Anda.");
+      return;
+    }
+
+    if (!isValidWhatsAppNumber(whatsappNumber)) {
+      setError(
+        "Format nomor tidak valid. Gunakan 08xx (misal: 081234567890) atau 62xx (misal: 6281234567890).",
+      );
       return;
     }
 
     setLoading(true);
     try {
-      const result = await sendPhoneOtp(user, normalizedPhone, recaptchaRef.current);
-      setConfirmationResult(result);
+      await updateUserWhatsApp(user.uid, whatsappNumber);
+      setSuccess(true);
+      setTimeout(() => {
+        router.replace(redirectTo);
+      }, 1500);
     } catch (err) {
-      recaptchaRef.current?.clear();
-      recaptchaRef.current = createRecaptchaVerifier("recaptcha-container");
-      setError(err instanceof Error ? err.message : "Gagal mengirim OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmOtp = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError(null);
-
-    if (!confirmationResult) {
-      setError("Kirim OTP terlebih dahulu.");
-      return;
-    }
-
-    if (!otp.trim()) {
-      setError("Masukkan kode OTP.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await confirmPhoneOtp(confirmationResult, otp.trim(), normalizedPhone);
-      router.replace(redirectTo);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "OTP tidak valid.");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan nomor WhatsApp.");
     } finally {
       setLoading(false);
     }
@@ -114,10 +73,10 @@ function VerifyPhonePageContent() {
         </Link>
 
         <section className="rounded-3xl border border-emerald-100 bg-white p-8 shadow-sm shadow-emerald-950/5">
-          <p className="text-sm font-black uppercase tracking-[0.24em] text-emerald-700">Verified Seller</p>
-          <h1 className="mt-3 text-4xl font-black text-slate-950">Verifikasi Nomor HP</h1>
-          <p className="mt-2 text-slate-600">
-            Nomor terverifikasi membuat buyer lebih percaya dan dipakai untuk tombol WhatsApp.
+          <h1 className="mt-3 text-4xl font-black text-slate-950">Hubungkan WhatsApp</h1>
+          <p className="mt-2 leading-relaxed text-slate-600">
+                Nomor WhatsApp digunakan untuk tombol obrolan seller agar pembeli bisa langsung menghubungi Anda.
+            Nomor akan tersimpan di profil dan setiap produk yang Anda jual.
           </p>
 
           {error ? (
@@ -126,63 +85,67 @@ function VerifyPhonePageContent() {
             </div>
           ) : null}
 
-          <form onSubmit={handleSendOtp} className="mt-8 space-y-4">
+          {success ? (
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-bold text-emerald-900">✓ WhatsApp berhasil tersimpan!</p>
+            </div>
+          ) : null}
+
+          <form onSubmit={handleConnectWhatsApp} className="mt-8 space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-700">Nomor HP Indonesia</label>
-              <input
-                value={phoneNumber}
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="+6281234567890"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-              />
+              <label className="mb-2 block text-sm font-bold text-slate-700">Nomor WhatsApp</label>
+              <div className="relative">
+                <span className="absolute left-4 top-3 text-sm font-bold text-slate-500">🇮🇩</span>
+                <input
+                  type="tel"
+                  value={whatsappNumber}
+                  onChange={(event) => setWhatsappNumber(event.target.value)}
+                  placeholder="081234567890"
+                  inputMode="tel"
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-14 pr-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  disabled={loading}
+                />
+              </div>
               <p className="mt-2 text-xs font-semibold text-slate-500">
-                Format otomatis mendukung 08..., 628..., atau +628...
+                Format: 08xxxxxxxx atau 62xxxxxxxx (tanpa +/-)
               </p>
             </div>
 
-            <div id="recaptcha-container" />
-
             <button
               type="submit"
-              disabled={loading || !user}
-              className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              disabled={loading || !user || success}
+              className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Mengirim..." : confirmationResult ? "Kirim Ulang OTP" : "Kirim OTP"}
+              {loading ? "Menyimpan..." : success ? "Berhasil tersimpan" : "Hubungkan WhatsApp"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.replace(redirectTo)}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Lewati untuk Sekarang
             </button>
           </form>
 
-          {confirmationResult ? (
-            <form onSubmit={handleConfirmOtp} className="mt-6 space-y-4 border-t border-emerald-100 pt-6">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">Kode OTP</label>
-                <input
-                  value={otp}
-                  onChange={(event) => setOtp(event.target.value)}
-                  placeholder="6 digit kode"
-                  inputMode="numeric"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {loading ? "Memverifikasi..." : "Verifikasi Nomor"}
-              </button>
-            </form>
-          ) : null}
+          <div className="mt-8 space-y-3 border-t border-slate-100 pt-6">
+            <h3 className="font-bold text-slate-900">Mengapa WhatsApp diperlukan?</h3>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li>Pembeli bisa menghubungi Anda langsung dari marketplace</li>
+              <li>Meningkatkan kepercayaan pembeli terhadap produk Anda</li>
+              <li>Nomor akan ditampilkan di profil penjual dan setiap produk</li>
+            </ul>
+          </div>
         </section>
       </div>
     </main>
   );
 }
 
-export default function VerifyPhonePage() {
+export default function ConnectWhatsAppPage() {
   return (
     <Suspense fallback={<main className="min-h-screen bg-[#f6fbf6]" />}>
-      <VerifyPhonePageContent />
+      <ConnectWhatsAppPageContent />
     </Suspense>
   );
 }
