@@ -175,6 +175,10 @@ export async function createProduct(input: CreateProductInput) {
   const sellerPhone = userProfile?.whatsappNumber ?? input.seller.phoneNumber ?? null;
   const sellerVerified = userProfile?.isWhatsappConnected ?? false;
 
+  if (!sellerPhone || !sellerVerified) {
+    throw new Error("Hubungkan WhatsApp terlebih dahulu sebelum menjual barang.");
+  }
+
   const productRef = doc(collection(db, firebaseCollections.products));
 
   await setDoc(productRef, {

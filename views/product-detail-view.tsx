@@ -102,6 +102,11 @@ export function ProductDetailView() {
   const handleSubmitInterest = async () => {
     if (!user) return;
 
+    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
+      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+      return;
+    }
+
     setInterestLoading(true);
     setInterestError(null);
     setInterestSuccess(null);
@@ -122,6 +127,23 @@ export function ProductDetailView() {
     } finally {
       setInterestLoading(false);
     }
+  };
+
+  const handleChatSeller = () => {
+    setInterestError(null);
+    setInterestSuccess(null);
+
+    if (!user) {
+      router.push(`/login?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+      return;
+    }
+
+    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
+      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+      return;
+    }
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -245,19 +267,18 @@ export function ProductDetailView() {
                   >
                     Saya Minat
                   </button>
-                  <a
-                    href={whatsappUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-disabled={!isWhatsappConnected || !isActive}
+                  <button
+                    type="button"
+                    onClick={handleChatSeller}
+                    disabled={!isWhatsappConnected || !isActive}
                     className={`rounded-2xl border px-4 py-3 text-center text-sm font-bold transition ${
                       isWhatsappConnected && isActive
                         ? "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
-                        : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
+                        : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                     }`}
                   >
                     {isWhatsappConnected ? "Chat Penjual" : "WhatsApp penjual belum tersedia"}
-                  </a>
+                  </button>
                 </>
               ) : null}
               <Link

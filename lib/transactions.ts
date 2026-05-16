@@ -84,6 +84,10 @@ export async function createInterestTransaction(input: CreateTransactionInput) {
     throw new Error("Produk ini sedang tidak tersedia untuk transaksi baru.");
   }
 
+  if (!input.buyerWhatsapp) {
+    throw new Error("Hubungkan WhatsApp terlebih dahulu sebelum memulai transaksi.");
+  }
+
   const existingTransaction = await findOpenBuyerTransaction(input.product.id, input.buyerId);
   if (existingTransaction) {
     return existingTransaction;
