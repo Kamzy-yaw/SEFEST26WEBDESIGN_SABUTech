@@ -12,6 +12,7 @@ export function UserSection({ compact = false }: UserSectionProps) {
   const { user, profile, loading, error, loginWithGoogle, logout } = useAuth();
   const avatar = profile?.photoURL || user?.photoURL || "/default-avatar.png";
   const name = profile?.name || user?.displayName || "Penjual Eco";
+  const isWhatsappConnected = Boolean(profile?.isWhatsappConnected && profile?.whatsappNumber);
 
   if (!user) {
     return (
@@ -47,11 +48,19 @@ export function UserSection({ compact = false }: UserSectionProps) {
           <div>
             <p className="text-sm font-black text-slate-900">{name}</p>
             <p className="text-xs font-bold text-emerald-700">
-              {profile?.isWhatsappConnected ? "WhatsApp Terhubung" : "WhatsApp belum terhubung"}
+              {isWhatsappConnected ? "WhatsApp Terhubung" : "WhatsApp belum terhubung"}
             </p>
           </div>
         ) : null}
       </Link>
+      {!isWhatsappConnected ? (
+        <Link
+          href="/verify-phone?redirect=%2Flogin%2Fmarket"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 transition hover:bg-amber-100"
+        >
+          Verifikasi WA
+        </Link>
+      ) : null}
       <button
         type="button"
         onClick={logout}

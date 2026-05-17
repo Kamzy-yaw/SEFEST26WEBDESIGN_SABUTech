@@ -7,6 +7,7 @@ import {
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { firebaseCollections } from "@/lib/firebase-collections";
 import { getFirebaseServices } from "@/lib/firebase";
+import { isValidWhatsAppNumber, normalizeWhatsAppNumber } from "@/lib/whatsapp";
 
 export type UserProfile = {
   uid: string;
@@ -33,29 +34,6 @@ function normalizeProfile(user: User, existing?: Partial<UserProfile>): UserProf
   };
 }
 
-export function normalizeWhatsAppNumber(phoneNumber: string): string {
-  const trimmed = phoneNumber.trim().replace(/[\s\-()]/g, "");
-
-  // Already in correct format
-  if (trimmed.startsWith("628")) return trimmed;
-
-  // +628xxx format
-  if (trimmed.startsWith("+628")) return trimmed.slice(1);
-
-  // 08xxx format
-  if (trimmed.startsWith("08")) return `62${trimmed.slice(1)}`;
-
-  // 628xxx without +
-  if (trimmed.startsWith("628")) return trimmed;
-
-  return trimmed;
-}
-
-export function isValidWhatsAppNumber(phoneNumber: string): boolean {
-  const normalized = normalizeWhatsAppNumber(phoneNumber);
-  return /^628\d{7,13}$/.test(normalized);
-}
-
 export async function upsertUserProfile(user: User) {
   const { db } = getFirebaseServices();
   const userRef = doc(db, firebaseCollections.users, user.uid);
@@ -77,24 +55,9 @@ export async function upsertUserProfile(user: User) {
 }
 
 export async function updateUserWhatsApp(userId: string, whatsappNumber: string) {
-  const { db } = getFirebaseServices();
-  const normalized = normalizeWhatsAppNumber(whatsappNumber);
-
-  if (!isValidWhatsAppNumber(whatsappNumber)) {
-    throw new Error("Format nomor WhatsApp tidak valid. Gunakan 08xx atau 62xx.");
-  }
-
-  const userRef = doc(db, firebaseCollections.users, userId);
-
-  await setDoc(
-    userRef,
-    {
-      whatsappNumber: normalized,
-      isWhatsappConnected: true,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  void userId;
+  void whatsappNumber;
+  throw new Error("Verifikasi WhatsApp harus melalui kode OTP.");
 }
 
 export async function updateUserProfile(
@@ -117,6 +80,12 @@ export async function updateUserProfile(
   }
 
   const userRef = doc(db, firebaseCollections.users, userId);
+  const snapshot = await getDoc(userRef);
+  const existing = snapshot.exists() ? (snapshot.data() as Partial<UserProfile>) : null;
+
+  if (existing?.whatsappNumber !== normalizedWhatsapp || !existing?.isWhatsappConnected) {
+    throw new Error("Ganti nomor WhatsApp harus melalui verifikasi OTP.");
+  }
 
   await setDoc(
     userRef,

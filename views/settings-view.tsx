@@ -58,6 +58,15 @@ export function SettingsView() {
       return;
     }
 
+    const normalizedWhatsapp = normalizeWhatsAppNumber(nextWhatsappNumber);
+
+    if (normalizedWhatsapp !== profile?.whatsappNumber || !profile?.isWhatsappConnected) {
+      router.push(
+        `/verify-phone?redirect=${encodeURIComponent("/settings")}&phone=${encodeURIComponent(nextWhatsappNumber)}`,
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -65,7 +74,7 @@ export function SettingsView() {
         name: nextName,
         whatsappNumber: nextWhatsappNumber,
       });
-      setWhatsappNumber(normalizeWhatsAppNumber(nextWhatsappNumber));
+      setWhatsappNumber(normalizedWhatsapp);
       setSuccess("Profil penjual berhasil diperbarui.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyimpan profil penjual.");

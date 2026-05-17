@@ -84,6 +84,7 @@ export function DashboardView() {
   const avatarUrl = profile?.photoURL || user?.photoURL || "/default-avatar.png";
   const sellerName = profile?.name || user?.displayName || "Penjual Eco";
   const isWhatsappConnected = Boolean(profile?.isWhatsappConnected && profile?.whatsappNumber);
+  const sellHref = isWhatsappConnected ? "/sell" : "/verify-phone?redirect=%2Fsell";
 
   return (
     <main className="min-h-screen bg-[#f6fbf6] px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
@@ -102,9 +103,23 @@ export function DashboardView() {
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {isWhatsappConnected ? "WhatsApp Terhubung" : "WhatsApp belum terhubung"}
               </p>
+              {!isWhatsappConnected ? (
+                <Link
+                  href="/verify-phone?redirect=%2Fdashboard"
+                  className="mt-2 inline-flex text-sm font-bold text-emerald-700 transition hover:text-emerald-900"
+                >
+                  Verifikasi WhatsApp dulu
+                </Link>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="/login/market"
+              className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+            >
+              Marketplace
+            </Link>
             <Link
               href="/settings"
               className="rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
@@ -112,7 +127,7 @@ export function DashboardView() {
               Pengaturan
             </Link>
             <Link
-              href="/sell"
+              href={sellHref}
               className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
             >
               Jual Barang
@@ -172,10 +187,10 @@ export function DashboardView() {
                 Tambahkan barang bekas pertama kamu untuk mulai membangun kontribusi.
               </p>
               <Link
-                href="/sell"
+                href={sellHref}
                 className="mt-5 inline-flex rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
               >
-                Jual Barang
+                {isWhatsappConnected ? "Jual Barang" : "Verifikasi WhatsApp dulu"}
               </Link>
             </div>
           ) : (

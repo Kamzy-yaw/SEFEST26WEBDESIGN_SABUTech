@@ -81,6 +81,8 @@ export function ProductDetailView() {
   const productStatus = product.status ?? "active";
   const isSold = productStatus === "sold";
   const isActive = productStatus === "active";
+  const isBuyerWhatsappVerified = Boolean(profile?.isWhatsappConnected && profile?.whatsappNumber);
+  const verifyWhatsappHref = `/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`;
 
   const handleOpenInterest = () => {
     setInterestError(null);
@@ -91,8 +93,8 @@ export function ProductDetailView() {
       return;
     }
 
-    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
-      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+    if (!isBuyerWhatsappVerified) {
+      router.push(verifyWhatsappHref);
       return;
     }
 
@@ -102,8 +104,8 @@ export function ProductDetailView() {
   const handleSubmitInterest = async () => {
     if (!user) return;
 
-    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
-      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+    if (!isBuyerWhatsappVerified) {
+      router.push(verifyWhatsappHref);
       return;
     }
 
@@ -138,8 +140,8 @@ export function ProductDetailView() {
       return;
     }
 
-    if (!profile?.isWhatsappConnected || !profile.whatsappNumber) {
-      router.push(`/verify-phone?redirect=${encodeURIComponent(`/login/market/${product.id}`)}`);
+    if (!isBuyerWhatsappVerified) {
+      router.push(verifyWhatsappHref);
       return;
     }
 
@@ -256,6 +258,14 @@ export function ProductDetailView() {
               </div>
             ) : null}
 
+            {user && !isOwner && !isBuyerWhatsappVerified ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-bold text-amber-900">
+                  Verifikasi WhatsApp dulu untuk memastikan nomor kamu aktif sebelum transaksi.
+                </p>
+              </div>
+            ) : null}
+
             <div className={`grid gap-3 ${isOwner ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               {!isOwner ? (
                 <>
@@ -265,7 +275,7 @@ export function ProductDetailView() {
                     disabled={!isActive}
                     className="rounded-2xl border border-emerald-200 bg-emerald-600 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   >
-                    Saya Minat
+                    {!user ? "Login untuk Minat" : !isBuyerWhatsappVerified ? "Verifikasi WhatsApp dulu" : "Saya Minat"}
                   </button>
                   <button
                     type="button"
@@ -277,7 +287,13 @@ export function ProductDetailView() {
                         : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
                     }`}
                   >
-                    {isWhatsappConnected ? "Chat Penjual" : "WhatsApp penjual belum tersedia"}
+                    {!isWhatsappConnected
+                      ? "WhatsApp penjual belum tersedia"
+                      : !user
+                        ? "Login untuk Chat"
+                        : !isBuyerWhatsappVerified
+                          ? "Verifikasi WhatsApp dulu"
+                          : "Chat Penjual"}
                   </button>
                 </>
               ) : null}
