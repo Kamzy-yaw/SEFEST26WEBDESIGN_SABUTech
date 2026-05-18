@@ -60,7 +60,7 @@ async function findOpenBuyerTransaction(productId: string, buyerId: string) {
   const { db } = getFirebaseServices();
   const transactionQuery = query(
     collection(db, firebaseCollections.transactions),
-    where("productId", "==", productId),
+    where("buyerId", "==", buyerId),
   );
   const snapshot = await getDocs(transactionQuery);
 
