@@ -4,6 +4,7 @@ import {
   createVerification,
   generateOtpCode,
   getWhatsappVerification,
+  getUserWhatsappNumber,
   normalizeAndValidateWhatsApp,
   requireFirebaseUser,
   saveWhatsappVerification,
@@ -14,15 +15,32 @@ export const runtime = "nodejs";
 
 type RequestCodeBody = {
   phone?: unknown;
+  purpose?: unknown;
 };
+
+function parsePurpose(purpose: unknown) {
+  return purpose === "change" ? "change" : "connect";
+}
 
 export async function POST(request: Request) {
   try {
     const { user } = await requireFirebaseUser(request);
     const body = (await request.json()) as RequestCodeBody;
     const phone = normalizeAndValidateWhatsApp(body.phone);
+    const purpose = parsePurpose(body.purpose);
     const existing = await getWhatsappVerification(user.uid);
     const now = Date.now();
+
+    if (purpose === "change") {
+      const currentWhatsapp = await getUserWhatsappNumber(user.uid);
+
+      if (currentWhatsapp === phone) {
+        return NextResponse.json(
+          { success: false, error: "Nomor ini sudah terhubung." },
+          { status: 400 },
+        );
+      }
+    }
 
     if (
       existing?.lastSentAt &&
@@ -39,7 +57,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const verification = createVerification(user.uid, phone, generateOtpCode());
+    const verification = createVerification(user.uid, phone, generateOtpCode(), purpose);
     await saveWhatsappVerification(verification);
 
     try {
@@ -53,7 +71,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Kode verifikasi sudah dikirim ke WhatsApp Anda.",
+      message:
+        purpose === "change"
+          ? "Kode verifikasi sudah dikirim ke nomor baru Anda."
+          : "Kode verifikasi sudah dikirim ke WhatsApp Anda.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal mengirim kode WhatsApp.";

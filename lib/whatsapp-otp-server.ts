@@ -14,6 +14,7 @@ export type WhatsAppVerification = {
   uid: string;
   phone: string;
   code: string;
+  purpose: "connect" | "change";
   expiresAt: number;
   attempts: number;
   lastSentAt: number;
@@ -70,13 +71,19 @@ export function generateOtpCode() {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-export function createVerification(uid: string, phone: string, code: string): WhatsAppVerification {
+export function createVerification(
+  uid: string,
+  phone: string,
+  code: string,
+  purpose: WhatsAppVerification["purpose"],
+): WhatsAppVerification {
   const now = Date.now();
 
   return {
     uid,
     phone,
     code,
+    purpose,
     expiresAt: now + OTP_EXPIRY_MS,
     attempts: 0,
     lastSentAt: now,
@@ -103,14 +110,25 @@ export async function saveWhatsappVerification(verification: WhatsAppVerificatio
     .set(verification, { merge: true });
 }
 
+export async function getUserWhatsappNumber(uid: string) {
+  const { adminDb } = getFirebaseAdminServices();
+  const snapshot = await adminDb.collection(firebaseCollections.users).doc(uid).get();
+  const data = snapshot.exists ? (snapshot.data() as { whatsappNumber?: unknown }) : null;
+
+  return typeof data?.whatsappNumber === "string" ? data.whatsappNumber : null;
+}
+
 export async function markUserWhatsappVerified(uid: string, phone: string) {
   const { adminDb } = getFirebaseAdminServices();
+  const now = Date.now();
+
   await adminDb.collection(firebaseCollections.users).doc(uid).set(
     {
       uid,
       whatsappNumber: phone,
       isWhatsappConnected: true,
-      updatedAt: Date.now(),
+      whatsappUpdatedAt: now,
+      updatedAt: now,
     },
     { merge: true },
   );

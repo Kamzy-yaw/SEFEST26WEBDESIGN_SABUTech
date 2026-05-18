@@ -3,6 +3,7 @@ export {
   isValidWhatsAppNumber,
   normalizeWhatsAppNumber,
   subscribeToUserProfile,
+  updateUserName,
   updateUserProfile,
   updateUserWhatsApp,
   type UserProfile,

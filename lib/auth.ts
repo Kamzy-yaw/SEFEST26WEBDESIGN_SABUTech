@@ -17,6 +17,7 @@ export type UserProfile = {
   whatsappNumber: string | null;
   isWhatsappConnected: boolean;
   contributionCount: number;
+  whatsappUpdatedAt?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
 };
@@ -58,6 +59,25 @@ export async function updateUserWhatsApp(userId: string, whatsappNumber: string)
   void userId;
   void whatsappNumber;
   throw new Error("Verifikasi WhatsApp harus melalui kode OTP.");
+}
+
+export async function updateUserName(userId: string, name: string) {
+  const { db } = getFirebaseServices();
+  const cleanName = name.trim();
+
+  if (!cleanName) {
+    throw new Error("Nama penjual wajib diisi.");
+  }
+
+  await setDoc(
+    doc(db, firebaseCollections.users, userId),
+    {
+      uid: userId,
+      name: cleanName,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export async function updateUserProfile(

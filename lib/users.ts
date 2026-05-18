@@ -3,6 +3,7 @@ export {
   loginWithGooglePopup,
   logoutUser,
   subscribeToUserProfile,
+  updateUserName,
   updateUserProfile,
   updateUserWhatsApp,
   upsertUserProfile,

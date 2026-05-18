@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 
 type VerifyCodeBody = {
   code?: unknown;
+  purpose?: unknown;
 };
 
 function normalizeCode(code: unknown) {
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     const { user } = await requireFirebaseUser(request);
     const body = (await request.json()) as VerifyCodeBody;
     const code = normalizeCode(body.code);
+    const requestedPurpose = body.purpose === "change" ? "change" : "connect";
 
     if (!/^\d{6}$/.test(code)) {
       return NextResponse.json(
@@ -36,6 +38,15 @@ export async function POST(request: Request) {
     if (!verification || !["pending", "sent"].includes(verification.status)) {
       return NextResponse.json(
         { success: false, error: "Kode verifikasi belum diminta atau sudah tidak aktif." },
+        { status: 400 },
+      );
+    }
+
+    const verificationPurpose = verification.purpose ?? "connect";
+
+    if (verificationPurpose !== requestedPurpose) {
+      return NextResponse.json(
+        { success: false, error: "Kode verifikasi tidak sesuai dengan permintaan terbaru." },
         { status: 400 },
       );
     }
@@ -71,7 +82,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "WhatsApp berhasil terverifikasi.",
+      message:
+        verificationPurpose === "change"
+          ? "Nomor WhatsApp berhasil diperbarui."
+          : "WhatsApp berhasil terverifikasi.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memverifikasi kode.";

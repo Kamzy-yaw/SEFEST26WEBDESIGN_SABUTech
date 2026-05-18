@@ -12,6 +12,8 @@ type WhatsAppOtpResponse = {
   error?: string;
 };
 
+export type WhatsAppOtpPurpose = "connect" | "change";
+
 async function parseOtpResponse(response: Response) {
   const data = (await response.json().catch(() => ({}))) as WhatsAppOtpResponse;
 
@@ -22,27 +24,35 @@ async function parseOtpResponse(response: Response) {
   return data.message || "Berhasil.";
 }
 
-export async function requestWhatsAppOtp(idToken: string, phone: string) {
+export async function requestWhatsAppOtp(
+  idToken: string,
+  phone: string,
+  purpose: WhatsAppOtpPurpose = "connect",
+) {
   const response = await fetch("/api/whatsapp/request-code", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ phone, purpose }),
   });
 
   return parseOtpResponse(response);
 }
 
-export async function verifyWhatsAppOtp(idToken: string, code: string) {
+export async function verifyWhatsAppOtp(
+  idToken: string,
+  code: string,
+  purpose: WhatsAppOtpPurpose = "connect",
+) {
   const response = await fetch("/api/whatsapp/verify-code", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, purpose }),
   });
 
   return parseOtpResponse(response);
